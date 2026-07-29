@@ -7,6 +7,7 @@ import Home from './pages/public/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import AuthCallback from './pages/auth/AuthCallback';
 import JobSearch from './pages/public/JobSearch';
 import JobDetails from './pages/public/JobDetails';
 import ForEmployers from './pages/public/ForEmployers';
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/jobs" element={<JobSearch />} />
           <Route path="/jobs/:id" element={<JobDetails />} />
           <Route path="/employers" element={<ForEmployers />} />
