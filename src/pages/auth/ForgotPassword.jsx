@@ -11,12 +11,9 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
     setLoading(false);
-    if (error) toast.error(error.message);
-    else setSent(true);
+    if (error) toast.error(error.message); else setSent(true);
   };
 
   return (
@@ -26,28 +23,16 @@ export default function ForgotPassword() {
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600" />
           <span className="font-display text-lg font-bold">Stratos Nova</span>
         </Link>
-
         <div className="card">
           <h1 className="mb-1 font-display text-2xl font-bold">Reset your password</h1>
           <p className="mb-6 text-sm text-white/50">We'll email you a reset link.</p>
-
-          {sent ? (
-            <p className="text-sm text-accent-400">Check your inbox for a reset link.</p>
-          ) : (
+          {sent ? <p className="text-sm text-accent-400">Check your inbox for a reset link.</p> : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                required type="email" placeholder="Email address" className="input-field"
-                value={email} onChange={(e) => setEmail(e.target.value)}
-              />
-              <button type="submit" disabled={loading} className="btn-primary w-full">
-                {loading ? 'Sending…' : 'Send reset link'}
-              </button>
+              <input required type="email" placeholder="Email address" className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Sending…' : 'Send reset link'}</button>
             </form>
           )}
-
-          <p className="mt-6 text-center text-sm text-white/50">
-            <Link to="/login" className="text-accent-400 hover:text-accent-300">Back to sign in</Link>
-          </p>
+          <p className="mt-6 text-center text-sm text-white/50"><Link to="/login" className="text-accent-400 hover:text-accent-300">Back to sign in</Link></p>
         </div>
       </div>
     </div>

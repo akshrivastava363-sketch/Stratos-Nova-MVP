@@ -2,38 +2,28 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
+const dashboardByRole = {
+  employer: '/employer/dashboard',
+  admin: '/admin/dashboard',
+  recruiter: '/recruiter/dashboard',
+  candidate: '/candidate/dashboard',
+};
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Surface any error Supabase appended to the redirect URL (e.g. ?error=...&error_description=...)
     const params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
     const oauthError = params.get('error_description') || params.get('error');
-    if (oauthError) {
-      setError(decodeURIComponent(oauthError.replace(/\+/g, ' ')));
-      return;
-    }
+    if (oauthError) { setError(decodeURIComponent(oauthError.replace(/\+/g, ' '))); return; }
 
     (async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        setError(sessionError?.message || 'Could not complete sign-in.');
-        return;
-      }
-
-      // Give the handle_new_user trigger a moment, then fetch role
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
+      if (sessionError || !session) { setError(sessionError?.message || 'Could not complete sign-in.'); return; }
+      const { data: userRow } = await supabase.from('users').select('role').eq('id', session.user.id).maybeSingle();
       const role = userRow?.role || 'candidate';
-      const dest = role === 'employer' ? '/employer/dashboard'
-        : role === 'admin' ? '/admin/dashboard'
-        : '/candidate/dashboard';
-      navigate(dest, { replace: true });
+      navigate(dashboardByRole[role] || '/candidate/dashboard', { replace: true });
     })();
   }, [navigate]);
 

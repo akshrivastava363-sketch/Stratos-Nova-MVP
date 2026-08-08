@@ -5,19 +5,12 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null); // row from public.users
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadUserRow = useCallback(async (userId) => {
-    if (!userId) {
-      setProfile(null);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    if (!userId) { setProfile(null); return; }
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
     if (!error) setProfile(data);
   }, []);
 
@@ -26,20 +19,16 @@ export function AuthProvider({ children }) {
       setSession(session);
       loadUserRow(session?.user?.id).finally(() => setLoading(false));
     });
-
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       loadUserRow(session?.user?.id);
     });
-
     return () => listener.subscription.unsubscribe();
   }, [loadUserRow]);
 
   const signUp = async ({ email, password, fullName, role }) => {
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName, role } },
+      email, password, options: { data: { full_name: fullName, role } },
     });
     return { data, error };
   };
@@ -57,20 +46,15 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+  const signOut = async () => { await supabase.auth.signOut(); };
 
   const value = {
     session,
     user: session?.user ?? null,
-    profile,       // { id, email, role, full_name, ... }
+    profile,
     role: profile?.role ?? null,
     loading,
-    signUp,
-    signIn,
-    signInWithGoogle,
-    signOut,
+    signUp, signIn, signInWithGoogle, signOut,
     refreshProfile: () => loadUserRow(session?.user?.id),
   };
 

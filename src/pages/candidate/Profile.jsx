@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Upload, Plus, Trash2, Download } from 'lucide-react';
+import { Upload, Plus, Trash2, Download, CheckCircle2, Clock } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
 
-function calcCompletion(p, skillsCount) {
+function calcCompletion(p, skillsCount, eduCount, expCount) {
   const fields = [
     p.headline, p.bio, p.location, p.preferred_location, p.expected_salary_min,
-    p.resume_url, p.linkedin_url, p.availability,
-    p.education?.length > 0, p.experience?.length > 0, skillsCount > 0,
+    p.resume_url, p.linkedin_url, p.availability, p.notice_period, p.work_mode_preference,
+    (p.languages || []).length > 0, eduCount > 0, expCount > 0, skillsCount > 0,
   ];
   const filled = fields.filter(Boolean).length;
   return Math.round((filled / fields.length) * 100);
@@ -21,13 +21,21 @@ export default function CandidateProfile() {
   const [form, setForm] = useState(null);
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState('');
+  const [skillCategory, setSkillCategory] = useState('primary');
+  const [eduCount, setEduCount] = useState(0);
+  const [expCount, setExpCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [languagesInput, setLanguagesInput] = useState('');
 
   const load = async () => {
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     setForm(data || {});
-    const { data: cs } = await supabase.from('candidate_skills').select('skills(id,name)').eq('candidate_id', user.id);
-    setSkills((cs || []).map((x) => x.skills).filter(Boolean));
+    setLanguagesInput((data?.languages || []).join(', '));
+    const { data: cs } = await supabase.from('candidate_skills').select('skills(id,name),skill_category').eq('candidate_id', user.id);
+    setSkills((cs || []).map((x) => ({ ...x.skills, skill_category: x.skill_category })).filter((s) => s.id));
+    const { count: ec } = await supabase.from('education_records').select('*', { count: 'exact', head: true }).eq('candidate_id', user.id);
+    const { count: xc } = await supabase.from('employment_records').select('*', { count: 'exact', head: true }).eq('candidate_id', user.id);
+    setEduCount(ec || 0); setExpCount(xc || 0);
   };
 
   useEffect(() => { if (user) load(); }, [user]);
@@ -51,8 +59,8 @@ export default function CandidateProfile() {
       skill = newSkill;
     }
     if (skill && !skills.find((s) => s.id === skill.id)) {
-      await supabase.from('candidate_skills').insert({ candidate_id: user.id, skill_id: skill.id });
-      setSkills([...skills, skill]);
+      await supabase.from('candidate_skills').insert({ candidate_id: user.id, skill_id: skill.id, skill_category: skillCategory });
+      setSkills([...skills, { ...skill, skill_category: skillCategory }]);
     }
     setSkillInput('');
   };
@@ -62,30 +70,7 @@ export default function CandidateProfile() {
     setSkills(skills.filter((s) => s.id !== skillId));
   };
 
-  const addEducation = () => setForm((f) => ({ ...f, education: [...(f.education || []), { degree: '', institution: '', year: '' }] }));
-  const updateEducation = (i, k, v) => setForm((f) => {
-    const arr = [...(f.education || [])]; arr[i] = { ...arr[i], [k]: v }; return { ...f, education: arr };
-  });
-  const removeEducation = (i) => setForm((f) => ({ ...f, education: f.education.filter((_, idx) => idx !== i) }));
-
-  const addExperience = () => setForm((f) => ({ ...f, experience: [...(f.experience || []), { title: '', company: '', start: '', end: '', description: '' }] }));
-  const updateExperience = (i, k, v) => setForm((f) => {
-    const arr = [...(f.experience || [])]; arr[i] = { ...arr[i], [k]: v }; return { ...f, experience: arr };
-  });
-  const removeExperience = (i) => setForm((f) => ({ ...f, experience: f.experience.filter((_, idx) => idx !== i) }));
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const completion = calcCompletion(form, skills.length);
-    const { error } = await supabase.from('profiles').update({ ...form, profile_completion: completion }).eq('id', user.id);
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Profile saved');
-    refreshProfile();
-  };
-
-  const downloadPdf = () => {
+  const generateResume = (variant) => {
     const doc = new jsPDF();
     let y = 20;
     const line = (text, size = 11, gap = 7) => {
@@ -94,59 +79,90 @@ export default function CandidateProfile() {
       doc.text(split, 20, y);
       y += gap * split.length;
     };
-    line(user.user_metadata?.full_name || 'Candidate Profile', 18, 10);
+    line(user.user_metadata?.full_name || 'Candidate', 18, 10);
     if (form.headline) line(form.headline, 12, 8);
     if (form.location) line(`Location: ${form.location}`, 10, 6);
-    if (form.bio) { y += 2; line('Summary', 13, 8); line(form.bio); }
-    if (skills.length > 0) { y += 2; line('Skills', 13, 8); line(skills.map((s) => s.name).join(', ')); }
-    if ((form.experience || []).length > 0) {
-      y += 2; line('Experience', 13, 8);
-      form.experience.forEach((ex) => {
-        line(`${ex.title || ''} — ${ex.company || ''} (${ex.start || ''} - ${ex.end || ''})`, 11, 6);
-        if (ex.description) line(ex.description, 10, 6);
-      });
+    if (variant === 'ats') {
+      line('SKILLS', 13, 8);
+      line(skills.map((s) => s.name).join(', ') || '—');
+      line('EXPERIENCE SUMMARY', 13, 8);
+      line(`${expCount} employment record(s) on file — see full profile for details.`);
+      line('EDUCATION SUMMARY', 13, 8);
+      line(`${eduCount} education record(s) on file.`);
+    } else {
+      if (form.bio) { line('Summary', 13, 8); line(form.bio); }
+      if (skills.length > 0) { line('Skills', 13, 8); line(skills.map((s) => s.name).join(', ')); }
+      line('Notice Period', 13, 8);
+      line(form.notice_period || 'Not specified');
     }
-    if ((form.education || []).length > 0) {
-      y += 2; line('Education', 13, 8);
-      form.education.forEach((ed) => line(`${ed.degree || ''}, ${ed.institution || ''} (${ed.year || ''})`, 10, 6));
-    }
-    doc.save('profile.pdf');
+    doc.save(`resume-${variant}.pdf`);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const languages = languagesInput.split(',').map((l) => l.trim()).filter(Boolean);
+    const completion = calcCompletion({ ...form, languages }, skills.length, eduCount, expCount);
+    const { error } = await supabase.from('profiles').update({ ...form, languages, profile_completion: completion }).eq('id', user.id);
+    setLoading(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Profile saved');
+    refreshProfile();
+  };
+
+  const confirmCurrent = async () => {
+    const now = new Date().toISOString();
+    const nextOutreachStatus = form.outreach_status === 'profile_update_required' ? 'profile_updated' : form.outreach_status;
+    const { error } = await supabase.from('profiles').update({
+      profile_confirmed_at: now,
+      outreach_status: nextOutreachStatus,
+      outreach_status_updated_at: now,
+    }).eq('id', user.id);
+    if (error) { toast.error(error.message); return; }
+    setForm((f) => ({ ...f, profile_confirmed_at: now, outreach_status: nextOutreachStatus }));
+    toast.success('Thanks — marked as up to date.');
   };
 
   if (!form) return <DashboardLayout role="candidate"><div className="skeleton h-96" /></DashboardLayout>;
 
   return (
     <DashboardLayout role="candidate">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold">Your Profile</h1>
           <p className="text-white/50">Keep this updated — it's what employers see.</p>
         </div>
-        <button onClick={downloadPdf} className="btn-secondary !py-2 !px-4 text-sm shrink-0">
-          <Download size={15} /> Download PDF
+        <div className="flex gap-2">
+          <button onClick={() => generateResume('ats')} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> ATS Resume</button>
+          <button onClick={() => generateResume('professional')} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> Professional Resume</button>
+        </div>
+      </div>
+
+      <div className="card mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-white/60">
+          <Clock size={15} className="text-white/40" />
+          {form.profile_confirmed_at
+            ? `Confirmed current on ${new Date(form.profile_confirmed_at).toLocaleDateString()}`
+            : 'You haven\'t confirmed your information is current yet.'}
+        </div>
+        <button onClick={confirmCurrent} className="btn-secondary !py-2 !px-4 text-sm shrink-0">
+          <CheckCircle2 size={15} /> This is still current
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="card max-w-3xl space-y-6">
         <div>
           <label className="mb-1.5 block text-sm text-white/60">Headline</label>
-          <input className="input-field" placeholder="e.g. Full-Stack Developer, 3 yrs" value={form.headline || ''} onChange={handleChange('headline')} />
+          <input className="input-field" value={form.headline || ''} onChange={handleChange('headline')} />
         </div>
-
         <div>
           <label className="mb-1.5 block text-sm text-white/60">Bio</label>
           <textarea rows={3} className="input-field" value={form.bio || ''} onChange={handleChange('bio')} />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-sm text-white/60">Current Location</label>
-            <input className="input-field" value={form.location || ''} onChange={handleChange('location')} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm text-white/60">Preferred Location</label>
-            <input className="input-field" value={form.preferred_location || ''} onChange={handleChange('preferred_location')} />
-          </div>
+          <div><label className="mb-1.5 block text-sm text-white/60">Current Location</label><input className="input-field" value={form.location || ''} onChange={handleChange('location')} /></div>
+          <div><label className="mb-1.5 block text-sm text-white/60">Preferred Location</label><input className="input-field" value={form.preferred_location || ''} onChange={handleChange('preferred_location')} /></div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -157,16 +173,35 @@ export default function CandidateProfile() {
               <input type="number" className="input-field" placeholder="Max" value={form.expected_salary_max || ''} onChange={handleChange('expected_salary_max')} />
             </div>
           </div>
+          <div><label className="mb-1.5 block text-sm text-white/60">Current Salary (₹/yr)</label><input type="number" className="input-field" value={form.current_salary || ''} onChange={handleChange('current_salary')} /></div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm text-white/60">Availability</label>
-            <select className="input-field" value={form.availability || ''} onChange={handleChange('availability')}>
+            <label className="mb-1.5 block text-sm text-white/60">Notice Period</label>
+            <select className="input-field" value={form.notice_period || ''} onChange={handleChange('notice_period')}>
               <option value="">Select…</option>
               <option value="immediate">Immediate</option>
-              <option value="15_days">15 days notice</option>
-              <option value="30_days">30 days notice</option>
-              <option value="60_days">60 days notice</option>
+              <option value="15_days">15 days</option>
+              <option value="30_days">30 days</option>
+              <option value="60_days">60 days</option>
+              <option value="90_days">90 days</option>
             </select>
           </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-white/60">Preferred Work Mode</label>
+            <select className="input-field" value={form.work_mode_preference || ''} onChange={handleChange('work_mode_preference')}>
+              <option value="">Select…</option>
+              <option value="remote">Remote</option>
+              <option value="onsite">On-site</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm text-white/60">Languages (comma-separated)</label>
+          <input className="input-field" placeholder="English, Hindi" value={languagesInput} onChange={(e) => setLanguagesInput(e.target.value)} />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -175,7 +210,11 @@ export default function CandidateProfile() {
           <input className="input-field" placeholder="GitHub URL" value={form.github_url || ''} onChange={handleChange('github_url')} />
         </div>
 
-        {/* Resume */}
+        <div className="flex gap-4 text-sm">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={!!form.startup_experience} onChange={(e) => setForm({ ...form, startup_experience: e.target.checked })} /> Startup experience</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={!!form.enterprise_experience} onChange={(e) => setForm({ ...form, enterprise_experience: e.target.checked })} /> Enterprise experience</label>
+        </div>
+
         <div>
           <label className="mb-1.5 block text-sm text-white/60">Resume (PDF/DOCX)</label>
           <div className="flex items-center gap-3">
@@ -187,68 +226,32 @@ export default function CandidateProfile() {
           </div>
         </div>
 
-        {/* Skills */}
         <div>
           <label className="mb-1.5 block text-sm text-white/60">Skills</label>
           <div className="mb-2 flex flex-wrap gap-2">
             {skills.map((s) => (
               <span key={s.id} className="flex items-center gap-1.5 rounded-full bg-accent-500/15 px-3 py-1 text-xs text-accent-300">
-                {s.name}
+                {s.name} <span className="text-accent-300/50">({s.skill_category})</span>
                 <button type="button" onClick={() => removeSkill(s.id)}><Trash2 size={11} /></button>
               </span>
             ))}
           </div>
           <div className="flex gap-2">
-            <input
-              className="input-field" placeholder="Add a skill and press Enter" value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
-            />
+            <select className="input-field !py-2 w-36 text-sm" value={skillCategory} onChange={(e) => setSkillCategory(e.target.value)}>
+              <option value="primary">Primary</option>
+              <option value="secondary">Secondary</option>
+              <option value="tool">Tool</option>
+              <option value="technology">Technology</option>
+              <option value="domain">Domain</option>
+            </select>
+            <input className="input-field" placeholder="Add a skill and press Enter" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }} />
             <button type="button" onClick={addSkill} className="btn-secondary shrink-0 !px-4"><Plus size={16} /></button>
           </div>
         </div>
 
-        {/* Education */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm text-white/60">Education</label>
-            <button type="button" onClick={addEducation} className="text-xs text-accent-400 hover:text-accent-300">+ Add</button>
-          </div>
-          {(form.education || []).map((ed, i) => (
-            <div key={i} className="mb-3 grid grid-cols-[1fr_1fr_80px_32px] gap-2">
-              <input className="input-field !py-2" placeholder="Degree" value={ed.degree || ''} onChange={(e) => updateEducation(i, 'degree', e.target.value)} />
-              <input className="input-field !py-2" placeholder="Institution" value={ed.institution || ''} onChange={(e) => updateEducation(i, 'institution', e.target.value)} />
-              <input className="input-field !py-2" placeholder="Year" value={ed.year || ''} onChange={(e) => updateEducation(i, 'year', e.target.value)} />
-              <button type="button" onClick={() => removeEducation(i)} className="text-white/40 hover:text-red-400"><Trash2 size={15} /></button>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs text-white/40">Education and employment history now live on their own page for verification tracking — see "Education & Experience" in the sidebar.</p>
 
-        {/* Experience */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm text-white/60">Experience</label>
-            <button type="button" onClick={addExperience} className="text-xs text-accent-400 hover:text-accent-300">+ Add</button>
-          </div>
-          {(form.experience || []).map((ex, i) => (
-            <div key={i} className="mb-3 space-y-2 rounded-xl border border-white/10 p-3">
-              <div className="grid grid-cols-2 gap-2">
-                <input className="input-field !py-2" placeholder="Title" value={ex.title || ''} onChange={(e) => updateExperience(i, 'title', e.target.value)} />
-                <input className="input-field !py-2" placeholder="Company" value={ex.company || ''} onChange={(e) => updateExperience(i, 'company', e.target.value)} />
-              </div>
-              <div className="grid grid-cols-[1fr_1fr_32px] gap-2">
-                <input className="input-field !py-2" placeholder="Start (e.g. 2021)" value={ex.start || ''} onChange={(e) => updateExperience(i, 'start', e.target.value)} />
-                <input className="input-field !py-2" placeholder="End (or Present)" value={ex.end || ''} onChange={(e) => updateExperience(i, 'end', e.target.value)} />
-                <button type="button" onClick={() => removeExperience(i)} className="text-white/40 hover:text-red-400"><Trash2 size={15} /></button>
-              </div>
-              <textarea className="input-field !py-2" rows={2} placeholder="Description" value={ex.description || ''} onChange={(e) => updateExperience(i, 'description', e.target.value)} />
-            </div>
-          ))}
-        </div>
-
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? 'Saving…' : 'Save Profile'}
-        </button>
+        <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Saving…' : 'Save Profile'}</button>
       </form>
     </DashboardLayout>
   );
