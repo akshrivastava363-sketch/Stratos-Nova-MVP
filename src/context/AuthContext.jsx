@@ -26,9 +26,10 @@ export function AuthProvider({ children }) {
     return () => listener.subscription.unsubscribe();
   }, [loadUserRow]);
 
-  const signUp = async ({ email, password, fullName, role }) => {
+  const signUp = async ({ email, password, fullName, role, companyName, phone }) => {
     const { data, error } = await supabase.auth.signUp({
-      email, password, options: { data: { full_name: fullName, role } },
+      email, password,
+      options: { data: { full_name: fullName, role, company_name: companyName || null, phone: phone || null } },
     });
     return { data, error };
   };

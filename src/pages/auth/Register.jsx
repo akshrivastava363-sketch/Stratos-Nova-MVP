@@ -8,7 +8,7 @@ export default function Register() {
   const [params] = useSearchParams();
   const initialRole = params.get('role');
   const [role, setRole] = useState(['employer', 'candidate'].includes(initialRole) ? initialRole : 'candidate');
-  const [form, setForm] = useState({ fullName: '', email: '', password: '' });
+  const [form, setForm] = useState({ fullName: '', companyName: '', phone: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -16,8 +16,13 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (role === 'employer' && !form.companyName.trim()) { toast.error('Company name is required'); return; }
     setLoading(true);
-    const { error } = await signUp({ email: form.email, password: form.password, fullName: form.fullName, role });
+    const { error } = await signUp({
+      email: form.email, password: form.password, fullName: form.fullName, role,
+      companyName: role === 'employer' ? form.companyName : undefined,
+      phone: form.phone || undefined,
+    });
     setLoading(false);
     if (error) toast.error(error.message);
     else { toast.success('Check your email to verify your account.'); navigate('/login'); }
@@ -43,9 +48,18 @@ export default function Register() {
           </div>
           <p className="mb-4 text-xs text-white/30">Recruiter and admin accounts are created internally — contact your Stratos Nova admin.</p>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input required placeholder="Full name" className="input-field" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+            {role === 'employer' && (
+              <input required placeholder="Company name" className="input-field" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} />
+            )}
+            <input required placeholder={role === 'employer' ? 'Founder / contact person name' : 'Full name'} className="input-field" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+            {role === 'employer' && (
+              <input type="tel" placeholder="Phone number" className="input-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            )}
             <input required type="email" placeholder="Email address" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <input required type="password" placeholder="Password (min. 8 characters)" className="input-field" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            {role === 'employer' && (
+              <p className="text-xs text-white/30">Your company profile is created automatically from this — you can add website, industry, and logo later from the dashboard.</p>
+            )}
             <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Creating account…' : 'Create account'}</button>
           </form>
           <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>

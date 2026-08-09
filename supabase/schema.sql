@@ -622,14 +622,27 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer
 set search_path = public
 as $$
+declare
+  v_company_name text;
+  v_phone text;
 begin
-  insert into public.users (id, email, role, full_name)
+  v_company_name := new.raw_user_meta_data->>'company_name';
+  v_phone := new.raw_user_meta_data->>'phone';
+
+  insert into public.users (id, email, role, full_name, phone)
   values (
     new.id, new.email,
     coalesce(new.raw_user_meta_data->>'role', 'candidate')::public.user_role,
-    new.raw_user_meta_data->>'full_name'
+    new.raw_user_meta_data->>'full_name',
+    v_phone
   );
   insert into public.profiles (id) values (new.id);
+
+  if coalesce(new.raw_user_meta_data->>'role', 'candidate') = 'employer' and v_company_name is not null and length(trim(v_company_name)) > 0 then
+    insert into public.companies (owner_id, name, hiring_contact_name, hiring_contact_email, hiring_contact_phone, approval_status)
+    values (new.id, v_company_name, new.raw_user_meta_data->>'full_name', new.email, v_phone, 'pending');
+  end if;
+
   return new;
 end;
 $$;
