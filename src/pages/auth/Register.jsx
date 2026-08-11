@@ -25,7 +25,7 @@ export default function Register() {
     });
     setLoading(false);
     if (error) toast.error(error.message);
-    else { toast.success('Check your email to verify your account.'); navigate('/login'); }
+    else { toast.success('Check your email to verify your account.'); navigate(role === 'employer' ? '/employer/login' : '/candidate/login'); }
   };
 
   return (
@@ -64,7 +64,7 @@ export default function Register() {
           </form>
           <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>
           <button onClick={signInWithGoogle} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
-          <p className="mt-6 text-center text-sm text-white/50">Already have an account? <Link to="/login" className="text-accent-400 hover:text-accent-300">Sign in</Link></p>
+          <p className="mt-6 text-center text-sm text-white/50">Already have an account? <Link to={role === 'employer' ? '/employer/login' : '/candidate/login'} className="text-accent-400 hover:text-accent-300">Sign in</Link></p>
         </div>
       </div>
     </div>

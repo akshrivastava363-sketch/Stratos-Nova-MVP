@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import Home from './pages/public/Home';
 import Login from './pages/auth/Login';
+import CandidateLogin from './pages/auth/CandidateLogin';
+import EmployerLogin from './pages/auth/EmployerLogin';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import AuthCallback from './pages/auth/AuthCallback';
@@ -60,6 +62,8 @@ export default function App() {
           {/* Public */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/candidate/login" element={<CandidateLogin />} />
+          <Route path="/employer/login" element={<EmployerLogin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

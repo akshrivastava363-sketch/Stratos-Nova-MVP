@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import { LOCATIONS, INDUSTRIES, DEPARTMENTS, EXPERIENCE_RANGES, matchExperienceRange } from '../../lib/jobOptions';
 
 const empty = {
   title: '', description: '', responsibilities: '', requirements: '', location: '',
@@ -24,6 +25,12 @@ export default function JobForm() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
+  // "Other (specify)" fallback state for the three dropdowns
+  const [locationOther, setLocationOther] = useState(false);
+  const [industryOther, setIndustryOther] = useState(false);
+  const [departmentOther, setDepartmentOther] = useState(false);
+  const [experienceLabel, setExperienceLabel] = useState(EXPERIENCE_RANGES[0].label);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -37,7 +44,13 @@ export default function JobForm() {
       }
       if (isEdit) {
         const { data: job } = await supabase.from('jobs').select('*').eq('id', id).single();
-        if (job) setForm({ ...empty, ...job, expires_at: job.expires_at?.slice(0, 10) || '' });
+        if (job) {
+          setForm({ ...empty, ...job, expires_at: job.expires_at?.slice(0, 10) || '' });
+          if (job.location && !LOCATIONS.includes(job.location)) setLocationOther(true);
+          if (job.industry && !INDUSTRIES.includes(job.industry)) setIndustryOther(true);
+          if (job.department && !DEPARTMENTS.includes(job.department)) setDepartmentOther(true);
+          setExperienceLabel(matchExperienceRange(job.experience_min, job.experience_max));
+        }
         const { data: js } = await supabase.from('job_skills').select('skills(name)').eq('job_id', id);
         setSkillsInput((js || []).map((x) => x.skills?.name).filter(Boolean).join(', '));
       }
@@ -46,6 +59,13 @@ export default function JobForm() {
   }, [user, id, isEdit]);
 
   const handleChange = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const handleExperienceChange = (e) => {
+    const label = e.target.value;
+    setExperienceLabel(label);
+    const range = EXPERIENCE_RANGES.find((r) => r.label === label);
+    setForm({ ...form, experience_min: range.min, experience_max: range.max ?? '' });
+  };
 
   const upsertSkills = async (jobId) => {
     const names = skillsInput.split(',').map((s) => s.trim()).filter(Boolean);
@@ -69,8 +89,10 @@ export default function JobForm() {
     setLoading(true);
     const payload = {
       ...form, status: statusOverride || form.status, company_id: company.id, posted_by: user.id,
-      experience_max: form.experience_max || null, salary_min: form.salary_min || null, salary_max: form.salary_max || null,
+      experience_max: form.experience_max === '' ? null : form.experience_max,
+      salary_min: form.salary_min || null, salary_max: form.salary_max || null,
       expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+      openings: form.openings || 1,
     };
     delete payload.id; delete payload.created_at; delete payload.updated_at; delete payload.views_count;
     let jobId = id;
@@ -84,7 +106,7 @@ export default function JobForm() {
     }
     await upsertSkills(jobId);
     setLoading(false);
-    toast.success(isEdit ? 'Job updated' : 'Job posted');
+    toast.success(isEdit ? 'Job updated' : statusOverride === 'draft' ? 'Draft saved' : 'Job published');
     navigate('/employer/jobs');
   };
 
@@ -98,16 +120,52 @@ export default function JobForm() {
       )}
       <form onSubmit={(e) => handleSubmit(e)} className="card max-w-3xl space-y-5">
         <div><label className="mb-1.5 block text-sm text-white/60">Job Title *</label><input required className="input-field" value={form.title} onChange={handleChange('title')} /></div>
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><label className="mb-1.5 block text-sm text-white/60">Department</label><input className="input-field" value={form.department} onChange={handleChange('department')} /></div>
+          <div>
+            <label className="mb-1.5 block text-sm text-white/60">Department</label>
+            <select className="input-field" value={departmentOther ? '__other__' : form.department} onChange={(e) => {
+              if (e.target.value === '__other__') { setDepartmentOther(true); setForm({ ...form, department: '' }); }
+              else { setDepartmentOther(false); setForm({ ...form, department: e.target.value }); }
+            }}>
+              <option value="">Select department…</option>
+              {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              <option value="__other__">Other (specify)</option>
+            </select>
+            {departmentOther && <input className="input-field mt-2" placeholder="Enter department" value={form.department} onChange={handleChange('department')} />}
+          </div>
           <div><label className="mb-1.5 block text-sm text-white/60">Number of Openings</label><input type="number" min="1" className="input-field" value={form.openings} onChange={handleChange('openings')} /></div>
         </div>
+
         <div><label className="mb-1.5 block text-sm text-white/60">Description *</label><textarea required rows={4} className="input-field" value={form.description} onChange={handleChange('description')} /></div>
         <div><label className="mb-1.5 block text-sm text-white/60">Requirements</label><textarea rows={3} className="input-field" value={form.requirements} onChange={handleChange('requirements')} /></div>
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><label className="mb-1.5 block text-sm text-white/60">Location *</label><input required className="input-field" value={form.location} onChange={handleChange('location')} /></div>
-          <div><label className="mb-1.5 block text-sm text-white/60">Industry</label><input className="input-field" value={form.industry} onChange={handleChange('industry')} /></div>
+          <div>
+            <label className="mb-1.5 block text-sm text-white/60">Location *</label>
+            <select required={!locationOther} className="input-field" value={locationOther ? '__other__' : form.location} onChange={(e) => {
+              if (e.target.value === '__other__') { setLocationOther(true); setForm({ ...form, location: '' }); }
+              else { setLocationOther(false); setForm({ ...form, location: e.target.value }); }
+            }}>
+              <option value="">Select location…</option>
+              {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+              <option value="__other__">Other (specify)</option>
+            </select>
+            {locationOther && <input required className="input-field mt-2" placeholder="Enter location" value={form.location} onChange={handleChange('location')} />}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-white/60">Industry</label>
+            <select className="input-field" value={industryOther ? '__other__' : form.industry} onChange={(e) => {
+              if (e.target.value === '__other__') { setIndustryOther(true); setForm({ ...form, industry: '' }); }
+              else { setIndustryOther(false); setForm({ ...form, industry: e.target.value }); }
+            }}>
+              <option value="">Select industry…</option>
+              {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+            </select>
+            {industryOther && <input className="input-field mt-2" placeholder="Enter industry" value={form.industry} onChange={handleChange('industry')} />}
+          </div>
         </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div><label className="mb-1.5 block text-sm text-white/60">Employment Type</label>
             <select className="input-field" value={form.employment_type} onChange={handleChange('employment_type')}>
@@ -120,10 +178,17 @@ export default function JobForm() {
             </select>
           </div>
         </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><label className="mb-1.5 block text-sm text-white/60">Experience (years)</label><div className="flex gap-2"><input type="number" min="0" className="input-field" placeholder="Min" value={form.experience_min} onChange={handleChange('experience_min')} /><input type="number" min="0" className="input-field" placeholder="Max" value={form.experience_max} onChange={handleChange('experience_max')} /></div></div>
+          <div>
+            <label className="mb-1.5 block text-sm text-white/60">Experience Required</label>
+            <select className="input-field" value={experienceLabel} onChange={handleExperienceChange}>
+              {EXPERIENCE_RANGES.map((r) => <option key={r.label} value={r.label}>{r.label}</option>)}
+            </select>
+          </div>
           <div><label className="mb-1.5 block text-sm text-white/60">Salary (₹/year)</label><div className="flex gap-2"><input type="number" min="0" className="input-field" placeholder="Min" value={form.salary_min} onChange={handleChange('salary_min')} /><input type="number" min="0" className="input-field" placeholder="Max" value={form.salary_max} onChange={handleChange('salary_max')} /></div></div>
         </div>
+
         <div><label className="mb-1.5 block text-sm text-white/60">Required Skills (comma-separated)</label><input className="input-field" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="React, Node.js" /></div>
         <div><label className="mb-1.5 block text-sm text-white/60">Application Deadline</label><input type="date" className="input-field" value={form.expires_at} onChange={handleChange('expires_at')} /></div>
         <div className="flex gap-3 pt-2">

@@ -4,7 +4,6 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const links = [
-  { label: 'Find Jobs', href: '/jobs' },
   { label: 'For Employers', href: '/employers' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
@@ -32,7 +31,7 @@ export default function Navbar() {
         </Link>
         <div className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
-            <a key={l.label} href={l.href} className="text-sm text-white/70 transition hover:text-white">{l.label}</a>
+            <Link key={l.label} to={l.href} className="text-sm text-white/70 transition hover:text-white">{l.label}</Link>
           ))}
         </div>
         <div className="hidden items-center gap-3 md:flex">
@@ -43,7 +42,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm text-white/70 hover:text-white">Sign in</Link>
+              <Link to="/candidate/login" className="text-sm text-white/70 hover:text-white">Sign in</Link>
               <Link to="/register" className="btn-primary !py-2 !px-4 text-sm">Get Started <ArrowRight size={16} /></Link>
             </>
           )}
@@ -53,13 +52,13 @@ export default function Navbar() {
       {open && (
         <div className="border-t border-white/[0.06] px-6 py-4 md:hidden">
           <div className="flex flex-col gap-4">
-            {links.map((l) => <a key={l.label} href={l.href} className="text-sm text-white/70">{l.label}</a>)}
+            {links.map((l) => <Link key={l.label} to={l.href} className="text-sm text-white/70">{l.label}</Link>)}
             <div className="mt-2 flex gap-3">
               {user ? (
                 <button onClick={() => navigate(dashboardPath)} className="btn-primary flex-1 !py-2 text-sm">Dashboard</button>
               ) : (
                 <>
-                  <Link to="/login" className="btn-secondary flex-1 !py-2 text-sm">Sign in</Link>
+                  <Link to="/candidate/login" className="btn-secondary flex-1 !py-2 text-sm">Sign in</Link>
                   <Link to="/register" className="btn-primary flex-1 !py-2 text-sm">Get Started</Link>
                 </>
               )}

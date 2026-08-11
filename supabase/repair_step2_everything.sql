@@ -28,6 +28,12 @@ alter table public.profiles add column if not exists profile_confirmed_at timest
 create index if not exists idx_profiles_outreach_status on public.profiles(outreach_status);
 
 -- ---------------------------------------------------------------------
+-- JOBS TABLE COLUMN ADDITIONS
+-- ---------------------------------------------------------------------
+alter table public.jobs add column if not exists department text;
+alter table public.jobs add column if not exists openings integer default 1;
+
+-- ---------------------------------------------------------------------
 -- APPLICATIONS / INTERVIEWS / SKILLS COLUMN ADDITIONS
 -- ---------------------------------------------------------------------
 alter table public.interviews add column if not exists scorecard jsonb default '{}';

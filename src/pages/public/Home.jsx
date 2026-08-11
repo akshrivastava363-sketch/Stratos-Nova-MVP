@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Target, Zap, Shield, CheckCircle2, Star, Sparkles } from 'lucide-react';
+import { ArrowRight, Target, Zap, Shield, CheckCircle2, Star, Sparkles, MessageCircle, Mail, AlertTriangle } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { supabase } from '../../lib/supabase';
+import { WHATSAPP_NUMBER, CONTACT_EMAIL } from '../../lib/contactConfig';
 
 const stats = [
   { label: 'Startups Hiring', value: '250+' },
@@ -17,32 +18,44 @@ const whyUs = [
   { icon: Shield, title: 'Built-in Verification', desc: 'Education and employment verification workflows, modular and extensible.' },
 ];
 
-function ContactForm() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+function ContactOptions() {
+  const configured = WHATSAPP_NUMBER && CONTACT_EMAIL;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.from('contact_queries').insert(form);
-    setLoading(false);
-    if (!error) { setSent(true); setForm({ name: '', email: '', phone: '', subject: '', message: '' }); }
-  };
-
-  if (sent) return <p className="text-center text-accent-400">Thanks — we'll get back to you shortly.</p>;
+  if (!configured) {
+    return (
+      <div className="card flex items-start gap-3 border-yellow-500/30 bg-yellow-500/[0.06]">
+        <AlertTriangle size={18} className="mt-0.5 shrink-0 text-yellow-400" />
+        <p className="text-sm text-white/60">
+          Contact details aren't configured yet — add your WhatsApp number and email in <code className="text-yellow-300">src/lib/contactConfig.js</code> to activate these buttons.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <input required className="input-field" placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input required type="email" className="input-field" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-      </div>
-      <input className="input-field" placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      <input className="input-field" placeholder="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-      <textarea required rows={4} className="input-field" placeholder="Message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
-      <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Sending…' : 'Send Message'}</button>
-    </form>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <a
+        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        target="_blank" rel="noreferrer"
+        className="card flex flex-col items-center gap-3 text-center transition hover:border-green-500/40"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/15">
+          <MessageCircle size={26} className="text-green-400" />
+        </div>
+        <div className="font-medium">Chat on WhatsApp</div>
+        <p className="text-xs text-white/40">Get a response fast — message us directly.</p>
+      </a>
+      <a
+        href={`mailto:${CONTACT_EMAIL}`}
+        className="card flex flex-col items-center gap-3 text-center transition hover:border-accent-500/40"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-500/15">
+          <Mail size={26} className="text-accent-400" />
+        </div>
+        <div className="font-medium">Send us an Email</div>
+        <p className="text-xs text-white/40">{CONTACT_EMAIL}</p>
+      </a>
+    </div>
   );
 }
 
@@ -175,7 +188,7 @@ export default function Home() {
       <section id="contact" className="border-y border-white/[0.06] bg-white/[0.02] px-6 py-24">
         <div className="mx-auto max-w-xl">
           <h2 className="mb-8 text-center font-display text-3xl font-bold sm:text-4xl">Get in Touch</h2>
-          <ContactForm />
+          <ContactOptions />
         </div>
       </section>
 

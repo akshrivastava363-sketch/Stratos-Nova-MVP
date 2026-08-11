@@ -18,6 +18,7 @@ export default function ForEmployers() {
         <h1 className="font-display text-4xl font-bold sm:text-5xl">Hiring built for startups</h1>
         <p className="mx-auto mt-4 max-w-xl text-white/60">A talent marketplace, ATS, and AI matching in one place — not a resume inbox.</p>
         <Link to="/register?role=employer" className="btn-primary mx-auto mt-8 w-fit">Start Hiring <ArrowRight size={18} /></Link>
+        <p className="mt-3 text-sm text-white/40">Already have an account? <Link to="/employer/login" className="text-accent-400 hover:text-accent-300">Employer sign in</Link></p>
         <div className="card mx-auto mt-16 max-w-md text-left">
           <ul className="space-y-3">
             {points.map((p) => <li key={p} className="flex items-start gap-2 text-sm text-white/70"><CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accent-400" /> {p}</li>)}
