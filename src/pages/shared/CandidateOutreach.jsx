@@ -89,7 +89,24 @@ export default function CandidateOutreach({ role = 'admin' }) {
         link: '/candidate/profile',
       });
       if (notificationError) console.error('Profile update notification failed:', notificationError.message);
+ 	const candidate = candidates.find((c) => c.id === candidateId);
+
+  if (candidate?.users?.email) {
+    const { error: emailError } = await supabase.functions.invoke(
+      'send-profile-update-email',
+      {
+        body: {
+          email: candidate.users.email,
+          name: candidate.users.full_name || 'Candidate',
+        },
+      }
+    );
+
+    if (emailError) {
+      console.error('Profile update email failed:', emailError.message);
     }
+  }
+}
 
     toast.success(`Marked ${statusLabel[status]}`);
   };
