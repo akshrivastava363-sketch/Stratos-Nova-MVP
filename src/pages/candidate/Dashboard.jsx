@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, Bookmark, Send, Award, TrendingUp, AlertCircle, ChevronRight } from 'lucide-react';
+import { Briefcase, Bookmark, Send, Award, TrendingUp, AlertCircle, ChevronRight, Bell, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
@@ -74,6 +74,23 @@ export default function CandidateDashboard() {
         <div className="card mb-6 flex items-center gap-3 border-red-500/30 bg-red-500/[0.06]">
           <AlertCircle size={18} className="shrink-0 text-red-400" />
           <div><div className="text-sm font-medium">Couldn't load your dashboard data</div><div className="text-xs text-white/50">{error}</div></div>
+        </div>
+      )}
+
+      {profile?.outreach_status === 'profile_update_required' && (
+        <div className="card mb-6 border-red-500/30 bg-red-500/[0.06]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Bell size={19} className="mt-0.5 shrink-0 text-red-300" />
+              <div>
+                <div className="text-sm font-semibold text-red-200">Profile update required</div>
+                <p className="mt-1 text-xs text-white/50">Stratos Nova has requested you to review and update your profile information.</p>
+              </div>
+            </div>
+            <Link to="/candidate/profile" className="btn-primary !py-2 !px-4 text-sm shrink-0">
+              Update Profile <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
       )}
 

@@ -9,6 +9,7 @@ import CandidateLogin from './pages/auth/CandidateLogin';
 import EmployerLogin from './pages/auth/EmployerLogin';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import AuthCallback from './pages/auth/AuthCallback';
 import JobSearch from './pages/public/JobSearch';
 import JobDetails from './pages/public/JobDetails';
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/employer/login" element={<EmployerLogin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+	  <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/jobs" element={<JobSearch />} />
           <Route path="/jobs/:id" element={<JobDetails />} />

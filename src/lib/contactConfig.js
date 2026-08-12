@@ -8,5 +8,5 @@
 //
 // WHATSAPP_NUMBER: full international format, digits only, no + or spaces
 // (e.g. a Delhi number +91 98765 43210 becomes "919876543210")
-export const WHATSAPP_NUMBER = ''; // e.g. '919958216978'
-export const CONTACT_EMAIL = ''; // e.g. 'stratoshrsolutions@gmail.com'
+export const WHATSAPP_NUMBER ='919958216978'
+export const CONTACT_EMAIL ='stratoshrsolutions@gmail.com'

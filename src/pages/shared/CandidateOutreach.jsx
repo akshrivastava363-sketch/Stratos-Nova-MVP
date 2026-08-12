@@ -77,6 +77,20 @@ export default function CandidateOutreach({ role = 'admin' }) {
     const { error } = await supabase.rpc('set_candidate_outreach_status', { p_candidate_id: candidateId, p_status: status });
     if (error) { toast.error(error.message); return; }
     setCandidates((prev) => prev.map((c) => (c.id === candidateId ? { ...c, outreach_status: status } : c)));
+
+    // When staff requests a profile update, also create a candidate notification.
+    // The dashboard banner below is the fallback even if notification insertion fails.
+    if (status === 'profile_update_required') {
+      const { error: notificationError } = await supabase.from('notifications').insert({
+        user_id: candidateId,
+        type: 'system',
+        title: 'Profile update required',
+        body: 'Please review and update your profile information.',
+        link: '/candidate/profile',
+      });
+      if (notificationError) console.error('Profile update notification failed:', notificationError.message);
+    }
+
     toast.success(`Marked ${statusLabel[status]}`);
   };
 
