@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, Bookmark, Send, Award, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Briefcase, Bookmark, Send, Award, TrendingUp, AlertCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
@@ -24,17 +25,26 @@ export default function CandidateDashboard() {
   const [savedCount, setSavedCount] = useState(0);
   const [assessmentCount, setAssessmentCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [{ data: p }, { data: apps }, { count }, { count: assessCount }] = await Promise.all([
+      setError(null);
+      const [profileRes, appsRes, savedRes, assessRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('applications').select('id,status,applied_at,jobs(title,companies(name))').eq('candidate_id', user.id).order('applied_at', { ascending: false }).limit(10),
         supabase.from('saved_jobs').select('*', { count: 'exact', head: true }).eq('candidate_id', user.id),
         supabase.from('assessment_results').select('*', { count: 'exact', head: true }).eq('candidate_id', user.id).eq('status', 'completed'),
       ]);
-      setProfile(p); setApplications(apps || []); setSavedCount(count || 0); setAssessmentCount(assessCount || 0);
+      // Surface a real error rather than silently defaulting to empty/zero
+      // if any of these genuinely fail (as opposed to legitimately having no data).
+      const firstError = profileRes.error || appsRes.error || savedRes.error || assessRes.error;
+      if (firstError) { setError(firstError.message); setLoading(false); return; }
+      setProfile(profileRes.data);
+      setApplications(appsRes.data || []);
+      setSavedCount(savedRes.count || 0);
+      setAssessmentCount(assessRes.count || 0);
       setLoading(false);
     })();
   }, [user]);
@@ -52,15 +62,29 @@ export default function CandidateDashboard() {
           <h1 className="font-display text-2xl font-bold">Welcome back</h1>
           <p className="text-white/50">Here's what's happening with your job search.</p>
         </div>
-        <select value={profile?.candidate_status || 'open_to_work'} onChange={(e) => updateStatus(e.target.value)} className="input-field !py-2 w-48 text-sm">
-          {Object.entries(statusLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <div className="flex items-center gap-2">
+          <Link to="/candidate/profile" className="btn-secondary !py-2 !px-4 text-sm">{completion < 100 ? 'Complete Profile' : 'Update Profile'}</Link>
+          <select value={profile?.candidate_status || 'open_to_work'} onChange={(e) => updateStatus(e.target.value)} className="input-field !py-2 w-48 text-sm">
+            {Object.entries(statusLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
       </div>
 
-      <div className="card mb-8">
-        <div className="mb-2 flex items-center justify-between"><span className="text-sm font-medium">Profile completion</span><span className="text-sm text-accent-400">{completion}%</span></div>
+      {error && (
+        <div className="card mb-6 flex items-center gap-3 border-red-500/30 bg-red-500/[0.06]">
+          <AlertCircle size={18} className="shrink-0 text-red-400" />
+          <div><div className="text-sm font-medium">Couldn't load your dashboard data</div><div className="text-xs text-white/50">{error}</div></div>
+        </div>
+      )}
+
+      <Link to="/candidate/profile" className="card mb-8 block transition hover:border-white/[0.15]">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-medium">Profile completion</span>
+          <span className="flex items-center gap-1 text-sm text-accent-400">{completion}% <ChevronRight size={14} /></span>
+        </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-accent-500 to-accent-400" style={{ width: `${completion}%` }} /></div>
-      </div>
+        <div className="mt-3 text-xs text-white/40">{completion < 100 ? 'Complete your profile to improve your match rate →' : 'Your profile is complete →'}</div>
+      </Link>
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[

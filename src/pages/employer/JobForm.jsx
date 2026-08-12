@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { LOCATIONS, INDUSTRIES, DEPARTMENTS, EXPERIENCE_RANGES, matchExperienceRange } from '../../lib/jobOptions';
+import { getEffectivePlan } from '../../lib/entitlement';
 
 const empty = {
   title: '', description: '', responsibilities: '', requirements: '', location: '',
@@ -37,8 +38,8 @@ export default function JobForm() {
       const { data: c } = await supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle();
       setCompany(c);
       if (c) {
-        const { data: sub } = await supabase.from('company_subscriptions').select('subscription_plans(*)').eq('company_id', c.id).eq('status', 'active').maybeSingle();
-        setPlan(sub?.subscription_plans || null);
+        const effectivePlan = await getEffectivePlan({ userEmail: user.email, companyId: c.id });
+        setPlan(effectivePlan);
         const { count } = await supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('company_id', c.id).eq('status', 'active');
         setActiveJobCount(count || 0);
       }

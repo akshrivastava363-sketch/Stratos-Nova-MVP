@@ -1,8 +1,9 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Briefcase, Bookmark, User, MessageSquare, Bell,
   Users, PlusCircle, BarChart3, Building2, Settings, ShieldCheck, FileText,
-  GraduationCap, Award, CreditCard, UserCog, Sparkles, RefreshCw,
+  GraduationCap, Award, CreditCard, UserCog, Sparkles, RefreshCw, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -52,37 +53,73 @@ const navByRole = {
   ],
 };
 
+function NavLinks({ items, location, onNavigate }) {
+  return (
+    <nav className="space-y-1">
+      {items.map((item) => {
+        const active = location.pathname === item.href;
+        return (
+          <Link key={item.href} to={item.href} onClick={onNavigate}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+              active ? 'bg-accent-500/15 text-accent-300' : 'text-white/60 hover:bg-white/[0.05] hover:text-white'
+            }`}>
+            <item.icon size={17} /> {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function DashboardLayout({ children, role }) {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const items = navByRole[role] || [];
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/', { replace: true });
+  };
 
   return (
-    <div className="flex min-h-screen bg-nova-950">
-      <aside className="hidden w-64 shrink-0 border-r border-white/[0.06] p-4 lg:block">
-        <Link to="/" className="mb-8 flex items-center gap-2 px-2 pt-2">
+    <div className="min-h-screen bg-nova-950">
+      {/* Mobile top bar — the sidebar below is desktop-only, so sign out and
+          navigation would otherwise be completely inaccessible on small screens. */}
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3 lg:hidden">
+        <Link to="/" className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600" />
           <span className="font-display font-bold">Stratos Nova</span>
         </Link>
-        <nav className="space-y-1">
-          {items.map((item) => {
-            const active = location.pathname === item.href;
-            return (
-              <Link key={item.href} to={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                  active ? 'bg-accent-500/15 text-accent-300' : 'text-white/60 hover:bg-white/[0.05] hover:text-white'
-                }`}>
-                <item.icon size={17} /> {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="mt-8 border-t border-white/[0.06] pt-4">
-          <div className="px-3 text-xs text-white/40">{profile?.email}</div>
-          <button onClick={signOut} className="mt-2 w-full rounded-xl px-3 py-2.5 text-left text-sm text-white/60 hover:bg-white/[0.05]">Sign out</button>
+        <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-white/70 hover:bg-white/[0.06]" aria-label="Toggle menu">
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
+      {mobileOpen && (
+        <div className="border-b border-white/[0.06] px-4 py-4 lg:hidden">
+          <NavLinks items={items} location={location} onNavigate={() => setMobileOpen(false)} />
+          <div className="mt-4 border-t border-white/[0.06] pt-4">
+            <div className="px-3 text-xs text-white/40">{profile?.email}</div>
+            <button onClick={handleSignOut} className="mt-2 w-full rounded-xl px-3 py-2.5 text-left text-sm text-white/60 hover:bg-white/[0.05]">Sign out</button>
+          </div>
         </div>
-      </aside>
-      <main className="flex-1 p-6 lg:p-10">{children}</main>
+      )}
+
+      <div className="flex">
+        <aside className="hidden w-64 shrink-0 border-r border-white/[0.06] p-4 lg:block">
+          <Link to="/" className="mb-8 flex items-center gap-2 px-2 pt-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600" />
+            <span className="font-display font-bold">Stratos Nova</span>
+          </Link>
+          <NavLinks items={items} location={location} />
+          <div className="mt-8 border-t border-white/[0.06] pt-4">
+            <div className="px-3 text-xs text-white/40">{profile?.email}</div>
+            <button onClick={handleSignOut} className="mt-2 w-full rounded-xl px-3 py-2.5 text-left text-sm text-white/60 hover:bg-white/[0.05]">Sign out</button>
+          </div>
+        </aside>
+        <main className="flex-1 p-6 lg:p-10">{children}</main>
+      </div>
     </div>
   );
 }

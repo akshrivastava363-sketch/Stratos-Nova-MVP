@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Briefcase, Users, TrendingUp, Percent, PlusCircle, AlertCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { getEffectivePlan } from '../../lib/entitlement';
 import DashboardLayout from '../../layouts/DashboardLayout';
 
 export default function EmployerDashboard() {
@@ -23,8 +24,8 @@ export default function EmployerDashboard() {
         setJobs(j || []);
         const { count } = await supabase.from('applications').select('id, jobs!inner(company_id)', { count: 'exact', head: true }).eq('jobs.company_id', c.id);
         setAppCount(count || 0);
-        const { data: sub } = await supabase.from('company_subscriptions').select('*,subscription_plans(*)').eq('company_id', c.id).eq('status', 'active').maybeSingle();
-        setPlan(sub?.subscription_plans || null);
+        const effectivePlan = await getEffectivePlan({ userEmail: user.email, companyId: c.id });
+        setPlan(effectivePlan);
       }
       setLoading(false);
     })();
