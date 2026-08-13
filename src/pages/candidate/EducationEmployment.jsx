@@ -4,6 +4,7 @@ import { Plus, Trash2, Upload, AlertTriangle, ShieldCheck, Clock } from 'lucide-
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import { calcCompletion } from '../../lib/profileCompletion';
 
 const verificationBadge = {
   unverified: 'bg-white/10 text-white/50',
@@ -33,6 +34,17 @@ export default function EducationEmployment() {
 
   useEffect(() => { if (user) load(); }, [user]);
 
+  const syncCompletion = async (eduCount, expCount) => {
+    const [{ data: profile }, { count: skillsCount }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('candidate_skills').select('*', { count: 'exact', head: true }).eq('candidate_id', user.id),
+    ]);
+    if (profile) {
+      const completion = calcCompletion(profile, skillsCount || 0, eduCount, expCount);
+      await supabase.from('profiles').update({ profile_completion: completion }).eq('id', user.id);
+    }
+  };
+
   const addEducation = async (e) => {
     e.preventDefault();
     if (!eduForm.degree || !eduForm.college) { toast.error('Degree and college are required'); return; }
@@ -40,10 +52,12 @@ export default function EducationEmployment() {
     if (error) { toast.error(error.message); return; }
     setEduForm(emptyEdu);
     toast.success('Education record added');
+    const nextEduCount = education.length + 1;
+    await syncCompletion(nextEduCount, employment.length);
     load();
   };
 
-  const removeEducation = async (id) => { await supabase.from('education_records').delete().eq('id', id); load(); };
+  const removeEducation = async (id) => { await supabase.from('education_records').delete().eq('id', id); await syncCompletion(Math.max(0, education.length - 1), employment.length); load(); };
 
   // Duplicate detection: same company + overlapping dates
   const duplicateWarning = (candidate) => {
@@ -68,10 +82,12 @@ export default function EducationEmployment() {
     if (error) { toast.error(error.message); return; }
     setJobForm(emptyJob);
     toast.success('Employment record added');
+    const nextExpCount = employment.length + 1;
+    await syncCompletion(education.length, nextExpCount);
     load();
   };
 
-  const removeEmployment = async (id) => { await supabase.from('employment_records').delete().eq('id', id); load(); };
+  const removeEmployment = async (id) => { await supabase.from('employment_records').delete().eq('id', id); await syncCompletion(education.length, Math.max(0, employment.length - 1)); load(); };
 
   const uploadDoc = async (recordId, table, file) => {
     const path = `${user.id}/${table}-${recordId}-${Date.now()}.${file.name.split('.').pop()}`;

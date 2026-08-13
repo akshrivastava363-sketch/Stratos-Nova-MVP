@@ -5,16 +5,7 @@ import { jsPDF } from 'jspdf';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
-
-function calcCompletion(p, skillsCount, eduCount, expCount) {
-  const fields = [
-    p.headline, p.bio, p.location, p.preferred_location, p.expected_salary_min,
-    p.resume_url, p.linkedin_url, p.availability, p.notice_period, p.work_mode_preference,
-    (p.languages || []).length > 0, eduCount > 0, expCount > 0, skillsCount > 0,
-  ];
-  const filled = fields.filter(Boolean).length;
-  return Math.round((filled / fields.length) * 100);
-}
+import { calcCompletion } from '../../lib/profileCompletion';
 
 export default function CandidateProfile() {
   const { user, refreshProfile } = useAuth();
@@ -60,14 +51,20 @@ export default function CandidateProfile() {
     }
     if (skill && !skills.find((s) => s.id === skill.id)) {
       await supabase.from('candidate_skills').insert({ candidate_id: user.id, skill_id: skill.id, skill_category: skillCategory });
-      setSkills([...skills, { ...skill, skill_category: skillCategory }]);
+      const nextSkills = [...skills, { ...skill, skill_category: skillCategory }];
+      setSkills(nextSkills);
+      const nextCompletion = calcCompletion({ ...form }, nextSkills.length, eduCount, expCount);
+      await supabase.from('profiles').update({ profile_completion: nextCompletion }).eq('id', user.id);
     }
     setSkillInput('');
   };
 
   const removeSkill = async (skillId) => {
     await supabase.from('candidate_skills').delete().eq('candidate_id', user.id).eq('skill_id', skillId);
-    setSkills(skills.filter((s) => s.id !== skillId));
+    const nextSkills = skills.filter((s) => s.id !== skillId);
+    setSkills(nextSkills);
+    const nextCompletion = calcCompletion({ ...form }, nextSkills.length, eduCount, expCount);
+    await supabase.from('profiles').update({ profile_completion: nextCompletion }).eq('id', user.id);
   };
 
   const generateResume = (variant) => {
@@ -125,6 +122,8 @@ export default function CandidateProfile() {
 
   if (!form) return <DashboardLayout role="candidate"><div className="skeleton h-96" /></DashboardLayout>;
 
+  const liveCompletion = calcCompletion({ ...form, languages: languagesInput.split(',').map((l) => l.trim()).filter(Boolean) }, skills.length, eduCount, expCount);
+
   return (
     <DashboardLayout role="candidate">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -136,6 +135,15 @@ export default function CandidateProfile() {
           <button onClick={() => generateResume('ats')} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> ATS Resume</button>
           <button onClick={() => generateResume('professional')} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> Professional Resume</button>
         </div>
+      </div>
+
+      <div className="card mb-6">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-medium">Profile completion</span>
+          <span className="text-sm font-semibold text-accent-400">{liveCompletion}%</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-accent-500 to-accent-400" style={{ width: `${liveCompletion}%` }} /></div>
+        <p className="mt-2 text-xs text-white/40">Complete the missing sections to keep your profile ready for matching.</p>
       </div>
 
       <div className="card mb-6 flex flex-wrap items-center justify-between gap-3">

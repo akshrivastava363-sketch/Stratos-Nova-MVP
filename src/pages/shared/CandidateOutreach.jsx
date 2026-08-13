@@ -43,7 +43,7 @@ export default function CandidateOutreach({ role = 'admin' }) {
     setLoading(true);
     let q = supabase
       .from('profiles')
-      .select('id,outreach_status,outreach_status_updated_at,profile_confirmed_at,headline,users!inner(full_name,email)', { count: 'exact' });
+      .select('id,outreach_status,outreach_status_updated_at,profile_confirmed_at,headline,profile_completion,users!inner(full_name,email)', { count: 'exact' });
 
     if (statusFilter) q = q.eq('outreach_status', statusFilter);
     if (query) q = q.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`, { foreignTable: 'users' });
@@ -149,6 +149,7 @@ export default function CandidateOutreach({ role = 'admin' }) {
                   <div>
                     <div className="font-medium">{c.users?.full_name || 'Candidate'}</div>
                     <div className="text-xs text-white/40">{c.users?.email} · {c.headline}</div>
+                  <div className="mt-1 text-xs text-white/50">Profile completion: <span className="text-accent-300">{c.profile_completion ?? 0}%</span></div>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-white/30">
                       <Clock size={11} />
                       {c.profile_confirmed_at ? `Confirmed ${new Date(c.profile_confirmed_at).toLocaleDateString()}` : 'Never confirmed'}
@@ -157,6 +158,7 @@ export default function CandidateOutreach({ role = 'admin' }) {
                   <div className="flex items-center gap-2">
                     {responded && <span className="badge bg-purple-500/15 text-purple-300">Replied</span>}
                     <span className={`badge ${statusColor[c.outreach_status] || 'bg-white/10'}`}>{statusLabel[c.outreach_status] || c.outreach_status}</span>
+                    {role === 'admin' && <Link to={`/admin/candidates/${c.id}`} className="btn-secondary !py-1.5 !px-3 text-xs">View profile</Link>}
                     <Link to={`/${role}/messages?to=${c.id}`} className="btn-secondary !py-1.5 !px-3 text-xs">
                       <MessageSquare size={13} /> Message
                     </Link>

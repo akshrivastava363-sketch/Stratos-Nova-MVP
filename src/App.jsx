@@ -40,6 +40,7 @@ import RecruiterAssignedJobs from './pages/recruiter/AssignedJobs';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
+import AdminCandidateDetails from './pages/admin/CandidateDetails';
 import AdminEmployers from './pages/admin/Employers';
 import AdminRecruiters from './pages/admin/Recruiters';
 import AdminJobs from './pages/admin/Jobs';
@@ -110,6 +111,7 @@ export default function App() {
           {/* Admin */}
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+          <Route path="/admin/candidates/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminCandidateDetails /></ProtectedRoute>} />
           <Route path="/admin/outreach" element={<ProtectedRoute allowedRoles={['admin']}><CandidateOutreach role="admin" /></ProtectedRoute>} />
           <Route path="/admin/employers" element={<ProtectedRoute allowedRoles={['admin']}><AdminEmployers /></ProtectedRoute>} />
           <Route path="/admin/recruiters" element={<ProtectedRoute allowedRoles={['admin']}><AdminRecruiters /></ProtectedRoute>} />
