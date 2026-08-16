@@ -14,31 +14,40 @@ export default function AdminCandidateDetails() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) { setLoading(false); setError('No candidate ID in URL.'); return; }
+    const candidateId = String(id).trim();
     (async () => {
       setLoading(true);
       setError('');
-      const [u, p, s, e, x, a, r] = await Promise.all([
-        supabase.from('users').select('*').eq('id', id).single(),
-        supabase.from('profiles').select('*').eq('id', id).single(),
-        supabase.from('candidate_skills').select('proficiency,skill_category,skills(id,name,category)').eq('candidate_id', id),
-        supabase.from('education_records').select('*').eq('candidate_id', id).order('passing_year', { ascending: false }),
-        supabase.from('employment_records').select('*').eq('candidate_id', id).order('joining_date', { ascending: false }),
-        supabase.from('applications').select('*,jobs(title,companies(name))').eq('candidate_id', id).order('applied_at', { ascending: false }),
-        supabase.from('assessment_results').select('*').eq('candidate_id', id).order('created_at', { ascending: false }),
-      ]);
-      const firstError = u.error || p.error || s.error || e.error || x.error || a.error || r.error;
-      if (firstError) setError(firstError.message);
-      setData({
-        user: u.data || null,
-        profile: p.data || {},
-        skills: s.data || [],
-        education: e.data || [],
-        employment: x.data || [],
-        applications: a.data || [],
-        assessments: r.data || [],
-      });
-      setLoading(false);
+      try {
+        const [u, p, s, e, x, a, r] = await Promise.all([
+          supabase.from('users').select('*').eq('id', candidateId).single(),
+          supabase.from('profiles').select('*').eq('id', candidateId).single(),
+          supabase.from('candidate_skills').select('proficiency,skill_category,skills(id,name,category)').eq('candidate_id', candidateId),
+          supabase.from('education_records').select('*').eq('candidate_id', candidateId).order('passing_year', { ascending: false }),
+          supabase.from('employment_records').select('*').eq('candidate_id', candidateId).order('joining_date', { ascending: false }),
+          supabase.from('applications').select('*,jobs(title,companies(name))').eq('candidate_id', candidateId).order('applied_at', { ascending: false }),
+          supabase.from('assessment_results').select('*').eq('candidate_id', candidateId).order('created_at', { ascending: false }),
+        ]);
+        const firstError = u.error || p.error || s.error || e.error || x.error || a.error || r.error;
+        if (firstError) { setError(firstError.message); setLoading(false); return; }
+        setData({
+          user: u.data || null,
+          profile: p.data || {},
+          skills: Array.isArray(s.data) ? s.data : [],
+          education: Array.isArray(e.data) ? e.data : [],
+          employment: Array.isArray(x.data) ? x.data : [],
+          applications: Array.isArray(a.data) ? a.data : [],
+          assessments: Array.isArray(r.data) ? r.data : [],
+        });
+      } catch (err) {
+        // A genuinely rejected promise (network failure, malformed query,
+        // etc.) previously left the page stuck on the loading skeleton
+        // forever, since nothing downstream of the throw ever ran.
+        setError(err?.message || 'Failed to load candidate data.');
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [id]);
 
