@@ -9,7 +9,7 @@ const value = (v) => (v === null || v === undefined || v === '' ? '—' : String
 
 export default function AdminCandidateDetails() {
   const { id } = useParams();
-  const [data, setData] = useState({ user: null, profile: null, skills: [], education: [], employment: [], applications: [], assessments: [] });
+  const [data, setData] = useState({ user: null, profile: {}, skills: [], education: [], employment: [], applications: [], assessments: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 

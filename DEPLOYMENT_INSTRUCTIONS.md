@@ -136,3 +136,18 @@ Whether fresh or upgraded, test in this order — later steps depend on earlier 
 9. **Candidate Updates flow**: as candidate, confirm your profile is current; as admin/recruiter, find that candidate in Candidate Updates, message them, change their status
 
 If any step doesn't work as described, that's a real signal — tell me exactly which step and what you saw.
+
+## Section 5: Consolidated MVP stability/audit patch
+After the existing bugfix SQL/code has been applied, run:
+
+`supabase/migration_mvp_stability_and_audit.sql`
+
+This is additive and is designed to preserve existing data. It adds the Admin audit trail, database protections for candidate application/assessment actions, real assessment question/scoring infrastructure, subscription search usage tracking, candidate lifecycle maintenance, authorized private resume reads, and Admin role safety. The following requested items were intentionally not changed: certification entry, institution verification, offer management, candidate recommendations, and the company verification workflow.
+
+
+## Final security patch included
+The current package also includes:
+- Candidate Search usage-variable fix.
+- Employer company approval protection (employers cannot set/alter approval status or approved_at).
+- Database-level blocking of employer job create/edit while company is not approved.
+- Employer Job Form UI block for pending/rejected/suspended companies.

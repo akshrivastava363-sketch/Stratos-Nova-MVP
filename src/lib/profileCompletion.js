@@ -12,6 +12,7 @@ export const PROFILE_COMPLETION_FIELDS = [
 ];
 
 export function calcCompletion(profile = {}, skillsCount = 0, eduCount = 0, expCount = 0) {
+  profile = profile || {};
   const fields = [
     profile.headline,
     profile.bio,
@@ -32,6 +33,7 @@ export function calcCompletion(profile = {}, skillsCount = 0, eduCount = 0, expC
 }
 
 export function getMissingProfileItems(profile = {}, skillsCount = 0, eduCount = 0, expCount = 0) {
+  profile = profile || {};
   const missing = PROFILE_COMPLETION_FIELDS
     .filter(([key]) => !profile[key])
     .map(([, label]) => label);
