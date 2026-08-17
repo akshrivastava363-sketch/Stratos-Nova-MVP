@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { Download, MessageSquare, CalendarPlus, UserPlus, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { getEffectivePlan } from '../../lib/entitlement';
+import { getSignedResumeUrl } from '../../lib/resumeUtils';
 import DashboardLayout from '../../layouts/DashboardLayout';
 
 const stages = [
@@ -20,6 +22,7 @@ export default function JobApplicants({ role = 'employer' }) {
   const [assignment, setAssignment] = useState(null);
   const [recruiters, setRecruiters] = useState([]);
   const [showAssist, setShowAssist] = useState(false);
+  const [plan, setPlan] = useState(null);
 
   const load = async () => {
     const { data: j } = await supabase.from('jobs').select('id,title').eq('id', id).single();
@@ -44,6 +47,7 @@ export default function JobApplicants({ role = 'employer' }) {
 
     const { data: assign } = await supabase.from('recruiter_assignments').select('*,users!recruiter_assignments_recruiter_id_fkey(full_name,email)').eq('job_id', id).eq('status', 'active').maybeSingle();
     setAssignment(assign);
+    if (role === 'employer') { const { data: u } = await supabase.auth.getUser(); const { data: company } = await supabase.from('companies').select('id').eq('owner_id', u.user?.id).maybeSingle(); if (company) setPlan(await getEffectivePlan({ userEmail: u.user?.email, companyId: company.id })); }
     setLoading(false);
   };
 
@@ -55,6 +59,8 @@ export default function JobApplicants({ role = 'employer' }) {
   };
 
   const activateRecruiterAssist = async (recruiterId) => {
+    if (role !== 'employer') { toast.error('Only the employer can activate Recruiter Assist.'); return; }
+    if (!plan?.recruiter_assist_included) { toast.error('Recruiter Assist is not included in your plan.'); return; }
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from('recruiter_assignments').insert({ job_id: id, recruiter_id: recruiterId, assigned_by: user.id });
     if (error) { toast.error(error.message); return; }
@@ -101,9 +107,9 @@ export default function JobApplicants({ role = 'employer' }) {
           <div><h1 className="font-display text-2xl font-bold">{job?.title || 'Applicants'}</h1><p className="text-white/50">{applications.length} applicant{applications.length !== 1 ? 's' : ''}</p></div>
           {assignment ? (
             <span className="badge bg-accent-500/15 text-accent-300">Recruiter Assist: {assignment.users?.full_name}</span>
-          ) : (
+          ) : role === 'employer' && plan?.recruiter_assist_included ? (
             <button onClick={() => { setShowAssist(true); loadRecruiters(); }} className="btn-secondary !py-2 !px-4 text-sm"><UserPlus size={15} /> Activate Recruiter Assist</button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -137,7 +143,7 @@ export default function JobApplicants({ role = 'employer' }) {
                   {a.cover_note && <p className="mt-2 max-w-xl text-sm text-white/60">"{a.cover_note}"</p>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {a.profiles?.resume_url && <a href={a.profiles.resume_url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-white/50 hover:bg-white/[0.06] hover:text-white"><Download size={16} /></a>}
+                  {a.profiles?.resume_url && <button onClick={async()=>{try{const url=await getSignedResumeUrl(a.profiles.resume_url);if(url)window.open(url,'_blank','noopener,noreferrer')}catch(e){toast.error(e.message)}}} className="rounded-lg p-2 text-white/50 hover:bg-white/[0.06] hover:text-white"><Download size={16}/></button>}
                   <Link to={`/${role}/messages?to=${a.candidate_id}`} className="rounded-lg p-2 text-white/50 hover:bg-white/[0.06] hover:text-white"><MessageSquare size={16} /></Link>
                   <button onClick={() => setScheduling(scheduling === a.id ? null : a.id)} className="rounded-lg p-2 text-white/50 hover:bg-white/[0.06] hover:text-white"><CalendarPlus size={16} /></button>
                   <button onClick={() => setScoring(scoring === a.id ? null : a.id)} className="rounded-lg p-2 text-white/50 hover:bg-white/[0.06] hover:text-white"><Star size={16} /></button>

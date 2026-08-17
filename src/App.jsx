@@ -41,6 +41,7 @@ import RecruiterAssignedJobs from './pages/recruiter/AssignedJobs';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
 import AdminCandidateDetails from './pages/admin/CandidateDetails';
+import AdminEmployerDetails from './pages/admin/EmployerDetails';
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminEmployers from './pages/admin/Employers';
 import AdminRecruiters from './pages/admin/Recruiters';
@@ -51,6 +52,7 @@ import AdminCMS from './pages/admin/CMS';
 import AdminAnalytics from './pages/admin/Analytics';
 import RepositoryHealth from './pages/admin/RepositoryHealth';
 import AdminSettings from './pages/admin/Settings';
+import AdminActivityLog from './pages/admin/ActivityLog';
 
 import Messages from './pages/shared/Messages';
 import Notifications from './pages/shared/Notifications';
@@ -113,6 +115,7 @@ export default function App() {
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/admin/candidates/:id" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminCandidateDetails /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/admin/employers/:id" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminEmployerDetails /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/admin/outreach" element={<ProtectedRoute allowedRoles={['admin']}><CandidateOutreach role="admin" /></ProtectedRoute>} />
           <Route path="/admin/employers" element={<ProtectedRoute allowedRoles={['admin']}><AdminEmployers /></ProtectedRoute>} />
           <Route path="/admin/recruiters" element={<ProtectedRoute allowedRoles={['admin']}><AdminRecruiters /></ProtectedRoute>} />
@@ -123,6 +126,7 @@ export default function App() {
           <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
           <Route path="/admin/repository" element={<ProtectedRoute allowedRoles={['admin']}><RepositoryHealth /></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
+          <Route path="/admin/activity" element={<ProtectedRoute allowedRoles={['admin']}><AdminActivityLog /></ProtectedRoute>} />
 
           <Route path="*" element={<ComingSoon title="Page" />} />
         </Routes>

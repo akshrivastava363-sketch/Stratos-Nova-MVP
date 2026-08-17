@@ -50,6 +50,7 @@ const navByRole = {
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Repository Health', href: '/admin/repository', icon: Sparkles },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
+    { label: 'Activity Log', href: '/admin/activity', icon: FileText },
   ],
 };
 

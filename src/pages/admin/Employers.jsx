@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import { Link } from 'react-router-dom';
 
 const statusStyle = { pending: 'bg-yellow-500/15 text-yellow-300', approved: 'bg-green-500/15 text-green-300', rejected: 'bg-red-500/15 text-red-300', suspended: 'bg-red-500/15 text-red-300' };
 
@@ -42,7 +44,10 @@ export default function AdminEmployers() {
             <div key={c.id} className="card flex flex-wrap items-center justify-between gap-3">
               <div><div className="font-medium">{c.name}</div><div className="text-xs text-white/40">{c.users?.email} · {c.industry || 'Industry not set'}</div></div>
               <div className="flex items-center gap-2">
-                <span className={`badge ${statusStyle[c.approval_status]}`}>{c.approval_status}</span>
+                <Link to={`/admin/employers/${c.id}`} className="inline-flex items-center gap-1 btn-secondary !py-1.5 !px-3 text-xs">
+                  <Eye size={13} /> View Details
+                </Link>
+                <span className={`badge ${statusStyle[c.approval_status] || 'bg-white/[0.05] text-white/50'}`}>{c.approval_status || '—'}</span>
                 {c.approval_status !== 'approved' && <button onClick={() => setStatus(c.id, 'approved')} className="btn-primary !py-1.5 !px-3 text-xs">Approve</button>}
                 {c.approval_status !== 'rejected' && c.approval_status !== 'suspended' && <button onClick={() => setStatus(c.id, 'rejected')} className="btn-secondary !py-1.5 !px-3 text-xs">Reject</button>}
                 {c.approval_status === 'approved' && <button onClick={() => setStatus(c.id, 'suspended')} className="text-xs text-red-400 hover:text-red-300">Suspend</button>}

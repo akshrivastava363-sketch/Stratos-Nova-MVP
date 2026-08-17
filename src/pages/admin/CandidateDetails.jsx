@@ -21,8 +21,8 @@ export default function AdminCandidateDetails() {
       setError('');
       try {
         const [u, p, s, e, x, a, r] = await Promise.all([
-          supabase.from('users').select('*').eq('id', candidateId).single(),
-          supabase.from('profiles').select('*').eq('id', candidateId).single(),
+          supabase.from('users').select('*').eq('id', candidateId).maybeSingle(),
+          supabase.from('profiles').select('*').eq('id', candidateId).maybeSingle(),
           supabase.from('candidate_skills').select('proficiency,skill_category,skills(id,name,category)').eq('candidate_id', candidateId),
           supabase.from('education_records').select('*').eq('candidate_id', candidateId).order('passing_year', { ascending: false }),
           supabase.from('employment_records').select('*').eq('candidate_id', candidateId).order('joining_date', { ascending: false }),

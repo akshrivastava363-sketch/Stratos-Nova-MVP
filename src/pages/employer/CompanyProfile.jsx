@@ -37,7 +37,19 @@ export default function CompanyProfile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const payload = { ...form, owner_id: user.id, logo_url: logoUrl };
+    const payload = {
+      name: form.name,
+      website: form.website,
+      gst_number: form.gst_number,
+      company_size: form.company_size,
+      industry: form.industry,
+      about: form.about,
+      hiring_contact_name: form.hiring_contact_name,
+      hiring_contact_email: form.hiring_contact_email,
+      hiring_contact_phone: form.hiring_contact_phone,
+      logo_url: logoUrl,
+      owner_id: user.id,
+    };
     let error;
     if (companyId) { ({ error } = await supabase.from('companies').update(payload).eq('id', companyId)); }
     else { const res = await supabase.from('companies').insert(payload).select('id').single(); error = res.error; if (res.data) setCompanyId(res.data.id); }

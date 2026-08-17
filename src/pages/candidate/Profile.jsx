@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Upload, Plus, Trash2, Download, CheckCircle2, Clock } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { calcCompletion } from '../../lib/profileCompletion';
+import { regenerateCandidateResumes } from '../../lib/resumeUtils';
 
 export default function CandidateProfile() {
   const { user, refreshProfile } = useAuth();
@@ -19,7 +19,7 @@ export default function CandidateProfile() {
   const [languagesInput, setLanguagesInput] = useState('');
 
   const load = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     setForm(data || {});
     setLanguagesInput((data?.languages || []).join(', '));
     const { data: cs } = await supabase.from('candidate_skills').select('skills(id,name),skill_category').eq('candidate_id', user.id);
@@ -67,33 +67,7 @@ export default function CandidateProfile() {
     await supabase.from('profiles').update({ profile_completion: nextCompletion }).eq('id', user.id);
   };
 
-  const generateResume = (variant) => {
-    const doc = new jsPDF();
-    let y = 20;
-    const line = (text, size = 11, gap = 7) => {
-      doc.setFontSize(size);
-      const split = doc.splitTextToSize(text, 170);
-      doc.text(split, 20, y);
-      y += gap * split.length;
-    };
-    line(user.user_metadata?.full_name || 'Candidate', 18, 10);
-    if (form.headline) line(form.headline, 12, 8);
-    if (form.location) line(`Location: ${form.location}`, 10, 6);
-    if (variant === 'ats') {
-      line('SKILLS', 13, 8);
-      line(skills.map((s) => s.name).join(', ') || '—');
-      line('EXPERIENCE SUMMARY', 13, 8);
-      line(`${expCount} employment record(s) on file — see full profile for details.`);
-      line('EDUCATION SUMMARY', 13, 8);
-      line(`${eduCount} education record(s) on file.`);
-    } else {
-      if (form.bio) { line('Summary', 13, 8); line(form.bio); }
-      if (skills.length > 0) { line('Skills', 13, 8); line(skills.map((s) => s.name).join(', ')); }
-      line('Notice Period', 13, 8);
-      line(form.notice_period || 'Not specified');
-    }
-    doc.save(`resume-${variant}.pdf`);
-  };
+  const refreshGeneratedResumes = async () => { try { await regenerateCandidateResumes(user.id); await load(); toast.success('ATS and professional resumes refreshed'); } catch (e) { toast.error(e.message || 'Could not regenerate resumes'); } };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,7 +77,9 @@ export default function CandidateProfile() {
     const { error } = await supabase.from('profiles').update({ ...form, languages, profile_completion: completion }).eq('id', user.id);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success('Profile saved');
+    try { await regenerateCandidateResumes(user.id); } catch (e) { console.error('Resume regeneration failed:', e); }
+    toast.success('Profile saved and resumes refreshed');
+    await load();
     refreshProfile();
   };
 
@@ -132,8 +108,8 @@ export default function CandidateProfile() {
           <p className="text-white/50">Keep this updated — it's what employers see.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => generateResume('ats')} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> ATS Resume</button>
-          <button onClick={() => generateResume('professional')} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> Professional Resume</button>
+          <button onClick={refreshGeneratedResumes} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> ATS Resume</button>
+          <button onClick={refreshGeneratedResumes} className="btn-secondary !py-2 !px-4 text-sm"><Download size={15} /> Professional Resume</button>
         </div>
       </div>
 

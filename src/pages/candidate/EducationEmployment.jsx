@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Plus, Trash2, Upload, AlertTriangle, ShieldCheck, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { regenerateCandidateResumes } from '../../lib/resumeUtils';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { calcCompletion } from '../../lib/profileCompletion';
 
@@ -52,12 +53,13 @@ export default function EducationEmployment() {
     if (error) { toast.error(error.message); return; }
     setEduForm(emptyEdu);
     toast.success('Education record added');
+    try { await regenerateCandidateResumes(user.id); } catch (e) { console.error(e); }
     const nextEduCount = education.length + 1;
     await syncCompletion(nextEduCount, employment.length);
     load();
   };
 
-  const removeEducation = async (id) => { await supabase.from('education_records').delete().eq('id', id); await syncCompletion(Math.max(0, education.length - 1), employment.length); load(); };
+  const removeEducation = async (id) => { const { error } = await supabase.from('education_records').delete().eq('id', id); if(error){toast.error(error.message);return;} await syncCompletion(Math.max(0, education.length - 1), employment.length); try { await regenerateCandidateResumes(user.id); } catch(e){ console.error(e); } load(); };
 
   // Duplicate detection: same company + overlapping dates
   const duplicateWarning = (candidate) => {
@@ -82,12 +84,13 @@ export default function EducationEmployment() {
     if (error) { toast.error(error.message); return; }
     setJobForm(emptyJob);
     toast.success('Employment record added');
+    try { await regenerateCandidateResumes(user.id); } catch (e) { console.error(e); }
     const nextExpCount = employment.length + 1;
     await syncCompletion(education.length, nextExpCount);
     load();
   };
 
-  const removeEmployment = async (id) => { await supabase.from('employment_records').delete().eq('id', id); await syncCompletion(education.length, Math.max(0, employment.length - 1)); load(); };
+  const removeEmployment = async (id) => { const { error } = await supabase.from('employment_records').delete().eq('id', id); if(error){toast.error(error.message);return;} await syncCompletion(education.length, Math.max(0, employment.length - 1)); try { await regenerateCandidateResumes(user.id); } catch(e){ console.error(e); } load(); };
 
   const uploadDoc = async (recordId, table, file) => {
     const path = `${user.id}/${table}-${recordId}-${Date.now()}.${file.name.split('.').pop()}`;
@@ -97,6 +100,7 @@ export default function EducationEmployment() {
     const col = table === 'education_records' ? 'document_url' : 'experience_letter_url';
     await supabase.from(table).update({ [col]: path }).eq('id', recordId);
     toast.success('Document uploaded');
+    try { await regenerateCandidateResumes(user.id); } catch(e){ console.error(e); }
     load();
   };
 

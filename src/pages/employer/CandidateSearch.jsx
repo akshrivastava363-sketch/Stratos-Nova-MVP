@@ -1,121 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
-import { MapPin, Briefcase, Sparkles } from 'lucide-react';
+import { useEffect,useState } from 'react';
+import { MapPin,Briefcase,Target,RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import DashboardLayout from '../../layouts/DashboardLayout';
-
-const statusLabel = {
-  open_to_work: 'Open to Work', serving_notice: 'Serving Notice', interviewing: 'Interviewing',
-  immediate_joiner: 'Immediate Joiner', not_looking: 'Not Looking', inactive: 'Inactive',
-};
-
-export default function CandidateSearch({ role = 'employer' }) {
-  const { profile } = useAuth();
-  const [candidates, setCandidates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState({
-    location: '', availability: '', candidate_status: '', work_mode: '',
-    startup_only: false, enterprise_only: false, notice_period: '',
-  });
-  const [selected, setSelected] = useState(null);
-  const [jobSkillsForMatch, setJobSkillsForMatch] = useState([]);
-
-  const fetchCandidates = useCallback(async () => {
-    setLoading(true);
-    let q = supabase.from('profiles')
-      .select('id,headline,bio,location,expected_salary_min,expected_salary_max,availability,resume_url,candidate_status,notice_period,work_mode_preference,startup_experience,enterprise_experience,updated_at,users!inner(full_name,email)')
-      .not('headline', 'is', null)
-      .not('candidate_status', 'eq', 'inactive');
-
-    if (filters.location) q = q.ilike('location', `%${filters.location}%`);
-    if (filters.availability) q = q.eq('availability', filters.availability);
-    if (filters.candidate_status) q = q.eq('candidate_status', filters.candidate_status);
-    if (filters.work_mode) q = q.eq('work_mode_preference', filters.work_mode);
-    if (filters.notice_period) q = q.eq('notice_period', filters.notice_period);
-    if (filters.startup_only) q = q.eq('startup_experience', true);
-    if (filters.enterprise_only) q = q.eq('enterprise_experience', true);
-    if (query) q = q.ilike('headline', `%${query}%`);
-
-    const { data } = await q.order('updated_at', { ascending: false }).limit(30);
-    setCandidates(data || []);
-    setLoading(false);
-  }, [query, filters]);
-
-  useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
-
-  return (
-    <DashboardLayout role={role}>
-      <h1 className="mb-1 font-display text-2xl font-bold">Talent Repository</h1>
-      <p className="mb-6 text-white/50">Search the living, continuously updated candidate pool.</p>
-
-      <div className="card mb-8 space-y-3">
-        <input className="input-field !py-2 text-sm" placeholder="Role or keyword (e.g. React Developer)" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <input className="input-field !py-2 text-sm" placeholder="Location" value={filters.location} onChange={(e) => setFilters({ ...filters, location: e.target.value })} />
-          <select className="input-field !py-2 text-sm" value={filters.candidate_status} onChange={(e) => setFilters({ ...filters, candidate_status: e.target.value })}>
-            <option value="">Any status</option>
-            {Object.entries(statusLabel).filter(([k]) => k !== 'inactive').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <select className="input-field !py-2 text-sm" value={filters.availability} onChange={(e) => setFilters({ ...filters, availability: e.target.value })}>
-            <option value="">Any availability</option>
-            <option value="immediate">Immediate</option><option value="15_days">15 days</option><option value="30_days">30 days</option><option value="60_days">60 days</option>
-          </select>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <select className="input-field !py-2 text-sm" value={filters.work_mode} onChange={(e) => setFilters({ ...filters, work_mode: e.target.value })}>
-            <option value="">Any work mode</option><option value="remote">Remote</option><option value="onsite">On-site</option><option value="hybrid">Hybrid</option>
-          </select>
-          <select className="input-field !py-2 text-sm" value={filters.notice_period} onChange={(e) => setFilters({ ...filters, notice_period: e.target.value })}>
-            <option value="">Any notice period</option><option value="immediate">Immediate</option><option value="15_days">15 days</option><option value="30_days">30 days</option><option value="60_days">60 days</option><option value="90_days">90 days</option>
-          </select>
-          <div className="flex items-center gap-4 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={filters.startup_only} onChange={(e) => setFilters({ ...filters, startup_only: e.target.checked })} /> Startup exp.</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={filters.enterprise_only} onChange={(e) => setFilters({ ...filters, enterprise_only: e.target.checked })} /> Enterprise exp.</label>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[...Array(6)].map((_, i) => <div key={i} className="skeleton h-36" />)}</div>
-      ) : candidates.length === 0 ? (
-        <div className="card py-16 text-center text-white/40">No candidates match your filters yet.</div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {candidates.map((c) => (
-            <button key={c.id} onClick={() => setSelected(c)} className="card text-left">
-              <div className="mb-1 flex items-center justify-between">
-                <div className="font-medium">{c.users?.full_name}</div>
-                <span className="badge bg-white/5 text-white/50">{statusLabel[c.candidate_status] || c.candidate_status}</span>
-              </div>
-              <div className="text-sm text-white/50">{c.headline}</div>
-              {c.location && <div className="mt-2 flex items-center gap-1.5 text-xs text-white/40"><MapPin size={12} /> {c.location}</div>}
-              <div className="mt-1 flex gap-1.5 text-xs text-white/30">
-                {c.startup_experience && <span className="badge bg-white/5">Startup exp.</span>}
-                {c.enterprise_experience && <span className="badge bg-white/5">Enterprise exp.</span>}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onClick={() => setSelected(null)}>
-          <div className="card max-w-lg" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold">{selected.users?.full_name}</h2>
-            <p className="text-sm text-white/50">{selected.headline}</p>
-            {selected.bio && <p className="mt-3 text-sm text-white/60">{selected.bio}</p>}
-            <div className="mt-4 space-y-1 text-xs text-white/50">
-              {selected.location && <div className="flex items-center gap-1.5"><MapPin size={12} /> {selected.location}</div>}
-              {selected.expected_salary_min && <div>Expects ₹{selected.expected_salary_min / 100000}-{selected.expected_salary_max / 100000} LPA</div>}
-              {selected.notice_period && <div>Notice period: {selected.notice_period.replace('_', ' ')}</div>}
-              <div>Status: {statusLabel[selected.candidate_status] || selected.candidate_status}</div>
-            </div>
-            {selected.resume_url && <a href={selected.resume_url} target="_blank" rel="noreferrer" className="btn-primary mt-4 w-full"><Briefcase size={16} /> View Resume</a>}
-            <button onClick={() => setSelected(null)} className="btn-secondary mt-2 w-full">Close</button>
-          </div>
-        </div>
-      )}
-    </DashboardLayout>
-  );
-}
+import { getSignedResumeUrl } from '../../lib/resumeUtils';
+const statusLabel={open_to_work:'Open to Work',serving_notice:'Serving Notice',interviewing:'Interviewing',immediate_joiner:'Immediate Joiner',not_looking:'Not Looking',inactive:'Inactive'};
+export default function CandidateSearch({role='employer'}){const{user}=useAuth();const[candidates,setCandidates]=useState([]),[jobs,setJobs]=useState([]),[selected,setSelected]=useState(null),[loading,setLoading]=useState(false),[form,setForm]=useState({query:'',location:'',availability:'',candidate_status:'',work_mode:'',notice_period:'',startup_only:false,enterprise_only:false,skill:'',education:'',min_salary:'',min_experience:'',min_assessment_score:'',job_id:''});
+ const loadJobs=async()=>{if(!user)return;if(role==='employer'){const{data:c}=await supabase.from('companies').select('id').eq('owner_id',user.id).maybeSingle();if(c){const{data}=await supabase.from('jobs').select('id,title,status,location,experience_min,salary_min,salary_max').eq('company_id',c.id).order('created_at',{ascending:false});setJobs(data||[])}}else{const{data}=await supabase.from('recruiter_assignments').select('job_id,jobs(id,title,status,location,experience_min,salary_min,salary_max)').eq('recruiter_id',user.id).eq('status','active');setJobs((data||[]).map(x=>x.jobs).filter(Boolean))}};
+ const fetchCandidates=async()=>{setLoading(true);await supabase.rpc('refresh_candidate_lifecycle',{p_days_threshold:45});let companyId=null;if(role==='employer'){const{data:c}=await supabase.from('companies').select('id').eq('owner_id',user.id).maybeSingle();companyId=c?.id||null;const{data:usage,error:uerr}=await supabase.rpc('consume_candidate_search',{p_company_id:companyId});if(uerr){toast.error(uerr.message);setLoading(false);return;}if(usage&&!usage[0]?.allowed){toast.error('Monthly candidate search limit reached for your plan.');setLoading(false);return;}}
+ let q=supabase.from('profiles').select('id,headline,bio,location,expected_salary_min,expected_salary_max,availability,resume_url,candidate_status,notice_period,work_mode_preference,startup_experience,enterprise_experience,updated_at,profile_completion,users!inner(full_name,email)').eq('users.role','candidate').eq('users.is_active',true).neq('candidate_status','inactive');if(form.location)q=q.ilike('location',`%${form.location}%`);if(form.availability)q=q.eq('availability',form.availability);if(form.candidate_status)q=q.eq('candidate_status',form.candidate_status);if(form.work_mode)q=q.eq('work_mode_preference',form.work_mode);if(form.notice_period)q=q.eq('notice_period',form.notice_period);if(form.startup_only)q=q.eq('startup_experience',true);if(form.enterprise_only)q=q.eq('enterprise_experience',true);if(form.query)q=q.or(`headline.ilike.%${form.query}%,bio.ilike.%${form.query}%`);const{data,error}=await q.order('updated_at',{ascending:false}).limit(100);if(error){toast.error(error.message);setCandidates([]);setLoading(false);return;}const rows=data||[];const ids=rows.map(x=>x.id);let skills={},education={},assess={},experience={};if(ids.length){const[{data:sk},{data:ed},{data:ar},{data:em}]=await Promise.all([supabase.from('candidate_skills').select('candidate_id,skills(name)').in('candidate_id',ids),supabase.from('education_records').select('candidate_id,degree,college,university').in('candidate_id',ids),supabase.from('assessment_results').select('candidate_id,score').eq('status','completed').in('candidate_id',ids),supabase.from('employment_records').select('candidate_id,joining_date,exit_date,is_current').in('candidate_id',ids)]);(sk||[]).forEach(r=>(skills[r.candidate_id]??=[]).push(r.skills?.name?.toLowerCase()));(ed||[]).forEach(r=>(education[r.candidate_id]??=[]).push(`${r.degree||''} ${r.college||''} ${r.university||''}`.toLowerCase()));(ar||[]).forEach(r=>assess[r.candidate_id]=Math.max(assess[r.candidate_id]||0,Number(r.score||0)));(em||[]).forEach(r=>{const start=r.joining_date?new Date(r.joining_date):null;const end=r.is_current?new Date():r.exit_date?new Date(r.exit_date):null;if(start&&end&&end>=start)experience[r.candidate_id]=(experience[r.candidate_id]||0)+((end-start)/86400000)/365.25});}
+ const job=jobs.find(j=>j.id===form.job_id);let out=rows.map(c=>{const sk=skills[c.id]||[],ed=(education[c.id]||[]).join(' '),score=assess[c.id];let match=Math.min(15,Math.max(0,(c.profile_completion||0)*0.15));if(form.skill&&sk.includes(form.skill.trim().toLowerCase()))match+=20;if(form.education&&ed.includes(form.education.trim().toLowerCase()))match+=15;if(score!=null)match+=Math.min(10,score/10);if(job){if(job.location&&c.location&&c.location.toLowerCase().includes(job.location.toLowerCase()))match+=15;if(job.salary_min&&c.expected_salary_max>=job.salary_min)match+=10}return{...c,skill_names:sk,education_text:ed,latest_assessment_score:score,experience_years:Number((experience[c.id]||0).toFixed(1)),match_score:Math.round(Math.min(100,match))}});if(form.skill){const term=form.skill.trim().toLowerCase();out=out.filter(c=>(c.skill_names||[]).some(s=>s?.includes(term)))}if(form.education){const term=form.education.trim().toLowerCase();out=out.filter(c=>(c.education_text||'').includes(term))}if(form.min_salary)out=out.filter(c=>(c.expected_salary_max||0)>=Number(form.min_salary));if(form.min_assessment_score)out=out.filter(c=>(c.latest_assessment_score||0)>=Number(form.min_assessment_score));if(form.min_experience)out=out.filter(c=>(c.experience_years||0)>=Number(form.min_experience));out.sort((a,b)=>b.match_score-a.match_score);setCandidates(out);setLoading(false)};
+ useEffect(()=>{loadJobs();},[user,role]);useEffect(()=>{fetchCandidates();},[]);
+ const openResume=async path=>{try{const url=await getSignedResumeUrl(path);if(url)window.open(url,'_blank','noopener,noreferrer')}catch(e){toast.error(e.message)}};
+ return <DashboardLayout role={role}><div className="mb-6"><h1 className="mb-1 font-display text-2xl font-bold">Talent Repository</h1><p className="text-white/50">Search structured candidate data with job-aware matching.</p></div><div className="card mb-8 space-y-4"><div className="grid gap-3 sm:grid-cols-2"><input className="input-field !py-2 text-sm" placeholder="Name, role or keyword" value={form.query} onChange={e=>setForm({...form,query:e.target.value})}/><select className="input-field !py-2 text-sm" value={form.job_id} onChange={e=>setForm({...form,job_id:e.target.value})}><option value="">Optional: match against a job</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.title}</option>)}</select></div><div className="grid gap-3 sm:grid-cols-3"><input className="input-field !py-2 text-sm" placeholder="Location" value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/><input className="input-field !py-2 text-sm" placeholder="Skill" value={form.skill} onChange={e=>setForm({...form,skill:e.target.value})}/><input className="input-field !py-2 text-sm" placeholder="Education" value={form.education} onChange={e=>setForm({...form,education:e.target.value})}/></div><div className="grid gap-3 sm:grid-cols-4"><select className="input-field !py-2 text-sm" value={form.candidate_status} onChange={e=>setForm({...form,candidate_status:e.target.value})}><option value="">Any status</option>{Object.entries(statusLabel).filter(([k])=>k!=='inactive').map(([k,v])=><option key={k} value={k}>{v}</option>)}</select><select className="input-field !py-2 text-sm" value={form.availability} onChange={e=>setForm({...form,availability:e.target.value})}><option value="">Any availability</option><option value="immediate">Immediate</option><option value="15_days">15 days</option><option value="30_days">30 days</option><option value="60_days">60 days</option></select><select className="input-field !py-2 text-sm" value={form.work_mode} onChange={e=>setForm({...form,work_mode:e.target.value})}><option value="">Any work mode</option><option value="remote">Remote</option><option value="onsite">On-site</option><option value="hybrid">Hybrid</option></select><select className="input-field !py-2 text-sm" value={form.notice_period} onChange={e=>setForm({...form,notice_period:e.target.value})}><option value="">Any notice</option><option value="immediate">Immediate</option><option value="15_days">15 days</option><option value="30_days">30 days</option><option value="60_days">60 days</option><option value="90_days">90 days</option></select></div><div className="grid gap-3 sm:grid-cols-4"><input type="number" className="input-field !py-2 text-sm" placeholder="Min salary" value={form.min_salary} onChange={e=>setForm({...form,min_salary:e.target.value})}/><input type="number" step="0.1" min="0" className="input-field !py-2 text-sm" placeholder="Min experience (yrs)" value={form.min_experience||''} onChange={e=>setForm({...form,min_experience:e.target.value})}/><input type="number" min="0" max="100" className="input-field !py-2 text-sm" placeholder="Min assessment" value={form.min_assessment_score} onChange={e=>setForm({...form,min_assessment_score:e.target.value})}/><div className="flex items-center gap-3 text-xs text-white/60"><label className="flex items-center gap-2"><input type="checkbox" checked={form.startup_only} onChange={e=>setForm({...form,startup_only:e.target.checked})}/>Startup</label><label className="flex items-center gap-2"><input type="checkbox" checked={form.enterprise_only} onChange={e=>setForm({...form,enterprise_only:e.target.checked})}/>Enterprise</label></div><button onClick={fetchCandidates} disabled={loading} className="btn-primary"><RefreshCw size={15}/>{loading?'Searching…':'Apply Filters'}</button></div></div>{loading?<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[...Array(6)].map((_,i)=><div key={i} className="skeleton h-40"/>)}</div>:candidates.length===0?<div className="card py-16 text-center text-white/40">No candidates match your filters.</div>:<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{candidates.map(c=><button key={c.id} onClick={()=>setSelected(c)} className="card text-left"><div className="mb-1 flex items-center justify-between"><div className="font-medium">{c.users?.full_name||'Candidate'}</div><span className="badge bg-accent-500/10 text-accent-300">{c.match_score}% match</span></div><div className="text-sm text-white/50">{c.headline||'Profile headline not set'}</div>{c.location&&<div className="mt-2 flex items-center gap-1.5 text-xs text-white/40"><MapPin size={12}/>{c.location}</div>}<div className="mt-2 text-xs text-white/40">Profile {c.profile_completion||0}% · Assessment {c.latest_assessment_score??'—'} · Experience {c.experience_years??0} yrs</div></button>)}</div>}{selected&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onClick={()=>setSelected(null)}><div className="card max-w-xl" onClick={e=>e.stopPropagation()}><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{selected.users?.full_name}</h2><p className="text-sm text-white/50">{selected.headline}</p></div><div className="badge bg-accent-500/10 text-accent-300"><Target size={13} className="mr-1 inline"/>{selected.match_score}% match</div></div>{selected.bio&&<p className="mt-3 text-sm text-white/60">{selected.bio}</p>}<div className="mt-4 grid gap-2 text-xs text-white/50 sm:grid-cols-2"><div>Location: {selected.location||'—'}</div><div>Salary: {selected.expected_salary_min||'—'} - {selected.expected_salary_max||'—'}</div><div>Notice: {selected.notice_period||'—'}</div><div>Assessment: {selected.latest_assessment_score??'—'}</div><div>Experience: {selected.experience_years??0} yrs</div></div><div className="mt-4"><div className="mb-2 text-xs font-semibold text-white/60">Skills</div><div className="flex flex-wrap gap-2">{(selected.skill_names||[]).map(s=><span key={s} className="badge bg-white/5 text-white/50">{s}</span>)}</div></div>{selected.resume_url&&<button onClick={()=>openResume(selected.resume_url)} className="btn-primary mt-4 w-full"><Briefcase size={15}/>View Resume</button>}<button onClick={()=>setSelected(null)} className="btn-secondary mt-2 w-full">Close</button></div></div>}</DashboardLayout>}

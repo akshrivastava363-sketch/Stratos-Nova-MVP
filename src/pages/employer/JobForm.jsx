@@ -25,6 +25,7 @@ export default function JobForm() {
   const [skillsInput, setSkillsInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   // "Other (specify)" fallback state for the three dropdowns
   const [locationOther, setLocationOther] = useState(false);
@@ -37,6 +38,11 @@ export default function JobForm() {
     (async () => {
       const { data: c } = await supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle();
       setCompany(c);
+      if (c && c.approval_status !== 'approved') {
+        setBlocked(true);
+        setReady(true);
+        return;
+      }
       if (c) {
         const effectivePlan = await getEffectivePlan({ userEmail: user.email, companyId: c.id });
         setPlan(effectivePlan);
@@ -112,6 +118,18 @@ export default function JobForm() {
   };
 
   if (!ready) return <DashboardLayout role="employer"><div className="skeleton h-96" /></DashboardLayout>;
+
+  if (blocked) return (
+    <DashboardLayout role="employer">
+      <div className="card max-w-2xl py-12 text-center">
+        <h1 className="mb-2 font-display text-2xl font-bold">Company approval required</h1>
+        <p className="mb-6 text-white/50">Your company must be approved by an Admin before you can create or edit jobs.</p>
+        <button type="button" className="btn-primary" onClick={() => navigate('/employer/company')}>
+          Open Company Profile
+        </button>
+      </div>
+    </DashboardLayout>
+  );
 
   return (
     <DashboardLayout role="employer">

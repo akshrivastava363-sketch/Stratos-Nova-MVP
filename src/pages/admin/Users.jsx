@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Search, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Link } from 'react-router-dom';
 
 export default function AdminUsers() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -15,7 +17,7 @@ export default function AdminUsers() {
     setLoading(true);
     let q = supabase.from('users').select('*').order('created_at', { ascending: false }).limit(100);
     if (roleFilter) q = q.eq('role', roleFilter);
-    if (query) q = q.ilike('email', `%${query}%`);
+    if (query) q = q.or(`email.ilike.%${query}%,full_name.ilike.%${query}%,phone.ilike.%${query}%`);
     const { data, error } = await q;
     if (error) { toast.error(error.message); setUsers([]); setLoading(false); return; }
     const rows = data || [];
@@ -39,6 +41,7 @@ export default function AdminUsers() {
   };
 
   const changeRole = async (id, role) => {
+    if (id === currentUser?.id) { toast.error('You cannot change your own role.'); return; }
     const { error } = await supabase.from('users').update({ role }).eq('id', id);
     if (error) { toast.error(error.message); return; }
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
@@ -50,7 +53,7 @@ export default function AdminUsers() {
       <h1 className="mb-1 font-display text-2xl font-bold">Manage Users</h1>
       <p className="mb-6 text-white/50">Every candidate, employer, recruiter, and admin.</p>
       <div className="card mb-6 flex flex-wrap gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2"><Search size={15} className="text-white/40" /><input className="w-full bg-transparent text-sm outline-none" placeholder="Search by email" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+        <div className="flex flex-1 items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2"><Search size={15} className="text-white/40" /><input className="w-full bg-transparent text-sm outline-none" placeholder="Search by name, email or phone" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
         <select className="input-field !py-2 w-40 text-sm" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
           <option value="">All roles</option><option value="candidate">Candidate</option><option value="employer">Employer</option><option value="recruiter">Recruiter</option><option value="admin">Admin</option>
         </select>
