@@ -63,11 +63,11 @@ npm run dev
 Visit `http://localhost:5173`
 
 ### 1.4 — Deploy
-Push to GitHub, then connect via Netlify or Cloudflare Pages:
+Push to GitHub. The `main` branch is connected to the Cloudflare Pages project `stratos-nova-mvp`:
 - Build command: `npm run build`
 - **Base directory: leave empty** (this trips people up — only the publish directory should be `dist`, not the base)
 - Publish/output directory: `dist`
-- Add the same two env vars in your host's environment variable settings
+- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Cloudflare Pages → Settings → Environment variables for both Production and Preview
 
 Skip to **Section 3** for first-time account setup.
 
@@ -99,10 +99,9 @@ This brings in the code-level fixes that can't live in SQL:
 4. **Commit to main** → **Push origin**
 
 ### 2.4 — Wait for your host to rebuild
-- **Netlify**: Deploys tab — a new build should start automatically within a minute of the push
-- **Cloudflare Pages**: Workers & Pages → your project → Deployments tab — same behavior
+- **Cloudflare Pages**: Cloudflare Dashboard → Workers & Pages → `stratos-nova-mvp` → Deployments. A push to `main` triggers the production build; non-production branches create preview deployments.
 
-Wait for it to show **Published** / **Success** before testing.
+Wait for the Cloudflare deployment to show **Success** before testing. Production domain: `https://mvp.stratosnovahr.com`.
 
 ---
 
@@ -151,3 +150,17 @@ The current package also includes:
 - Employer company approval protection (employers cannot set/alter approval status or approved_at).
 - Database-level blocking of employer job create/edit while company is not approved.
 - Employer Job Form UI block for pending/rejected/suspended companies.
+
+
+## Section 6: Candidate verification readiness
+
+The additive migration `supabase/migration_verification_readiness.sql` adds:
+- A consent-backed verification request for an individual education or employment record.
+- An admin verification review workspace at `/admin/verifications`.
+- Candidate withdrawal of an in-progress request.
+- Server-side protection so candidates cannot mark their own education/employment records as verified.
+- Public registration hardening: only candidate and employer roles can be selected through self-sign-up; recruiter/admin accounts remain internally provisioned.
+
+Apply the migration to the connected Stratos Nova Supabase project before deploying the matching application code. Verify the migration succeeds, then use a candidate account to submit consent and an admin account to review it.
+
+**Important:** This workflow records consent and the evidence of a check. It does not imply that DigiLocker, NAD, EPFO or any background-verification provider is connected or approved. Keep the verification method set to the actual check performed. Do not enter passwords, API tokens or public links to identity/education documents in source-reference fields.
