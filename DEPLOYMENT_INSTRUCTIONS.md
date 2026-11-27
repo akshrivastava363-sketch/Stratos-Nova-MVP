@@ -42,7 +42,7 @@ Once both show Success, continue to **Section 2** below to make sure your code i
 3. Open `supabase/schema.sql` from the zip, copy the entire contents, paste into the query editor, click **Run**
 4. (Optional) Repeat with `supabase/seed.sql` for demo testimonials, FAQs, and assessment templates
 5. Go to **Authentication → Providers** → enable **Google** if you want Google sign-in
-6. Go to **Project Settings → API** → copy your **Project URL** and **anon public** key
+6. Go to **Project Settings → API** → copy your **Project URL** and **anon public** key\n7. After the base schema and existing platform migrations, apply `supabase/migration_verification_readiness.sql` to enable the consent-backed verification workflow
 
 ### 1.2 — Configure the app
 ```bash
