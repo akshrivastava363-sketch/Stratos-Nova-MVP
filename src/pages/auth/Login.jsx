@@ -77,7 +77,7 @@ export default function Login({ expectedRole, heading, registerHref = '/register
           </form>
           {expectedRole !== 'admin' && <>
             <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>
-            <button onClick={signInWithGoogle} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
+            <button onClick={() => signInWithGoogle(expectedRole)} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
             <p className="mt-6 text-center text-sm text-white/50">New here? <Link to={registerHref} className="text-accent-400 hover:text-accent-300">Create an account</Link></p>
             {expectedRole === 'candidate' && <p className="mt-3 text-center text-xs text-white/30"><Link to="/employer/login" className="hover:text-white/50">Hiring instead? Employer sign in</Link></p>}
             {expectedRole === 'employer' && <p className="mt-3 text-center text-xs text-white/30"><Link to="/candidate/login" className="hover:text-white/50">Looking for a job? Candidate sign in</Link></p>}
