@@ -62,8 +62,10 @@ export default function Register() {
             )}
             <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Creating account…' : 'Create account'}</button>
           </form>
-          <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>
-          <button onClick={() => signInWithGoogle(role)} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
+          {role === 'candidate' && <>
+            <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>
+            <button onClick={() => signInWithGoogle('candidate')} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
+          </>}
           <p className="mt-6 text-center text-sm text-white/50">Already have an account? <Link to={role === 'employer' ? '/employer/login' : '/candidate/login'} className="text-accent-400 hover:text-accent-300">Sign in</Link></p>
         </div>
       </div>
