@@ -27,7 +27,7 @@ There's deliberately no public signup for these roles. Register normally as a ca
 
 **Deliberately scaffolded, not faked:**
 - **AI candidate matching / ranking** — the search and filter system is real and fully functional; a true relevance-ranking algorithm (weighted scoring across skill match, assessment score, freshness, etc.) is a follow-up increment, not something I'd fake with a coin-flip "AI score."
-- **Institution/employment verification** — the `verification_sources` table and `verification_status` fields exist and flow through the UI correctly, but no real verification provider is wired in. It's intentionally inert until you connect one — the spec explicitly said "do not hardcode AI verification."
+- **Education/employment verification** — candidates can submit a specific verification request after giving explicit consent; admins can record the method, source, outcome and review reference. Candidate-editable records cannot self-assign a verified status. Reviews are manual until Stratos is separately approved and integrates DigiLocker/NAD or an authorised verification provider. No external verification API is currently connected.
 - **Assessment scoring** — the assessment *flow* (timer, tab-switch proctoring flag, template management) is real; actual question banks and answer grading aren't built. The current version records a placeholder score on submission — this needs a real question engine before it's production-grade.
 - **Candidate status auto-inactivity** — the SQL function exists and works if called, but isn't scheduled. Enable Supabase's `pg_cron` extension and run the one-line schedule command in the migration file's comments to make it automatic.
 - **Mobile OTP registration** — not built. It requires a paid SMS provider (Twilio/MSG91) with API keys, which is an infrastructure decision, not a code gap.
@@ -52,12 +52,12 @@ npm run dev
 
 ## 3. Deploy
 
-Push to GitHub, connect to Netlify or Cloudflare Pages:
+The repository is connected to the Cloudflare Pages project `stratos-nova-mvp`:
 - Build command: `npm run build`
 - Publish/output directory: `dist`
 - Add the same two env vars in your host's environment variable settings
 
-`public/_redirects` is included for SPA routing on both Netlify and Cloudflare Pages.
+`public/_redirects` provides the SPA fallback used by the Cloudflare Pages deployment.
 
 ## 4. First-time setup flow
 
