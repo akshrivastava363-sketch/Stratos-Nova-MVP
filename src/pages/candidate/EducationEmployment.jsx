@@ -50,8 +50,8 @@ export default function EducationEmployment() {
     }
     const consentText = 'I explicitly authorise Stratos Nova HR Solutions to process this selected education or employment record for recruitment-related verification. I authorise Stratos Nova to contact the relevant issuing institution, former/current employer or an appropriately authorised verification provider, and to share the resulting verification outcome with the employer/client for the recruitment purpose explained to me. I understand that a government or third-party provider is not connected unless the platform explicitly identifies an approved integration. I can withdraw this request while it is still in progress.';
     const accepted = window.confirm(
-      'CANDIDATE VERIFICATION CONSENT\\n\\n' + consentText +
-      '\\n\\nDo you consent to this specific verification request?'
+      'CANDIDATE VERIFICATION CONSENT\n\n' + consentText +
+      '\n\nDo you consent to this specific verification request?'
     );
     if (!accepted) return;
     const { error } = await supabase.from('verification_requests').insert({
@@ -66,6 +66,18 @@ export default function EducationEmployment() {
     });
     if (error) { toast.error(error.message); return; }
     toast.success('Consent recorded and verification request submitted.');
+    await load();
+  };
+
+  const withdrawVerification = async (requestId) => {
+    const accepted = window.confirm('Withdraw this verification request? Stratos Nova will stop further checks for this request where operationally possible.');
+    if (!accepted) return;
+    const { error } = await supabase.from('verification_requests').update({
+      candidate_withdrawn_at: new Date().toISOString(),
+      status: 'withdrawn',
+    }).eq('id', requestId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Verification request withdrawn.');
     await load();
   };
 
@@ -200,6 +212,7 @@ export default function EducationEmployment() {
                   <span className={`badge ${verificationBadge[verificationState] || verificationBadge.unverified}`}>{verificationState?.replaceAll('_', ' ')}</span>
                   {(!verificationRequest || ['withdrawn', 'unable_to_verify', 'discrepancy'].includes(verificationRequest.status)) && <button type="button" onClick={() => requestVerification('education', ed.id)} className="text-xs text-accent-300 hover:text-accent-200">Request verification</button>}
                   {verificationRequest?.result_summary && <span className="text-xs text-white/40">{verificationRequest.result_summary}</span>}
+                  {verificationRequest && ['pending', 'in_review', 'candidate_action_required'].includes(verificationRequest.status) && <button type="button" onClick={() => withdrawVerification(verificationRequest.id)} className="text-xs text-red-300 hover:text-red-200">Withdraw request</button>}
                   <label className="cursor-pointer text-xs text-accent-400 hover:text-accent-300">
                     <Upload size={11} className="mr-1 inline" /> {ed.document_url ? 'Replace document' : 'Upload document'}
                     <input type="file" className="hidden" onChange={(e) => e.target.files[0] && uploadDoc(ed.id, 'education_records', e.target.files[0])} />
@@ -245,6 +258,7 @@ export default function EducationEmployment() {
                   <span className={`badge ${verificationBadge[verificationState] || verificationBadge.unverified}`}>{verificationState?.replaceAll('_', ' ')}</span>
                   {(!verificationRequest || ['withdrawn', 'unable_to_verify', 'discrepancy'].includes(verificationRequest.status)) && <button type="button" onClick={() => requestVerification('employment', em.id)} className="text-xs text-accent-300 hover:text-accent-200">Request verification</button>}
                   {verificationRequest?.result_summary && <span className="text-xs text-white/40">{verificationRequest.result_summary}</span>}
+                  {verificationRequest && ['pending', 'in_review', 'candidate_action_required'].includes(verificationRequest.status) && <button type="button" onClick={() => withdrawVerification(verificationRequest.id)} className="text-xs text-red-300 hover:text-red-200">Withdraw request</button>}
                   <label className="cursor-pointer text-xs text-accent-400 hover:text-accent-300">
                     <Upload size={11} className="mr-1 inline" /> {em.experience_letter_url ? 'Replace letter' : 'Upload experience letter'}
                     <input type="file" className="hidden" onChange={(e) => e.target.files[0] && uploadDoc(em.id, 'employment_records', e.target.files[0])} />
