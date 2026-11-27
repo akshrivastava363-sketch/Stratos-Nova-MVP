@@ -55,7 +55,7 @@ npm run dev
 The repository is connected to the Cloudflare Pages project `stratos-nova-mvp`:
 - Build command: `npm run build`
 - Publish/output directory: `dist`
-- Add the same two env vars in your host's environment variable settings
+- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Cloudflare Pages → Settings → Environment variables for Production and Preview
 
 `public/_redirects` provides the SPA fallback used by the Cloudflare Pages deployment.
 
