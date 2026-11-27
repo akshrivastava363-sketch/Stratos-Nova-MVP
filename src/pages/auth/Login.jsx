@@ -22,18 +22,39 @@ export default function Login({ expectedRole, heading, registerHref = '/register
     e.preventDefault();
     setLoading(true);
     const { data, error } = await signIn(form);
-    if (error) { setLoading(false); toast.error(error.message); return; }
-
-    // Look up the role directly rather than relying on context state, which
-    // may not have caught up yet immediately after sign-in.
-    const { data: userRow } = await supabase.from('users').select('role').eq('id', data.user.id).maybeSingle();
-    const role = userRow?.role || 'candidate';
-    setLoading(false);
-
-    if (expectedRole && role !== expectedRole) {
-      toast.error(`This account isn't registered as ${expectedRole === 'employer' ? 'an employer' : 'a candidate'}. Redirecting you to the right place…`);
+    if (error) {
+      setLoading(false);
+      toast.error(error.message);
+      return;
     }
-    navigate(dashboardByRole[role] || '/candidate/dashboard');
+
+    const { data: userRow, error: profileError } = await supabase
+      .from('users').select('role').eq('id', data.user.id).maybeSingle();
+
+    if (profileError || !userRow?.role) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast.error('Your account profile could not be verified. Please contact support.');
+      return;
+    }
+
+    const role = userRow.role;
+    if (expectedRole && role !== expectedRole) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast.error(`This is not a ${expectedRole} account. Please use the correct sign-in page.`);
+      return;
+    }
+
+    if (!dashboardByRole[role]) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast.error('This account does not have an authorised portal role.');
+      return;
+    }
+
+    setLoading(false);
+    navigate(dashboardByRole[role], { replace: true });
   };
 
   return (
@@ -46,19 +67,21 @@ export default function Login({ expectedRole, heading, registerHref = '/register
         <div className="card">
           <h1 className="mb-1 font-display text-2xl font-bold">{heading || 'Welcome back'}</h1>
           <p className="mb-6 text-sm text-white/50">
-            {expectedRole === 'employer' ? 'Sign in to your employer account' : expectedRole === 'candidate' ? 'Sign in to your candidate account' : 'Sign in to your account'}
+            {expectedRole === 'employer' ? 'Sign in to your employer account' : expectedRole === 'candidate' ? 'Sign in to your candidate account' : expectedRole === 'admin' ? 'Authorised administrator access only' : 'Sign in to your account'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input required type="email" placeholder="Email address" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <input required type="password" placeholder="Password" className="input-field" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <input required type="email" autoComplete="username" placeholder="Email address" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <input required type="password" autoComplete="current-password" placeholder="Password" className="input-field" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             <div className="flex justify-end"><Link to="/forgot-password" className="text-xs text-accent-400 hover:text-accent-300">Forgot password?</Link></div>
             <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Signing in…' : 'Sign in'}</button>
           </form>
-          <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>
-          <button onClick={signInWithGoogle} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
-          <p className="mt-6 text-center text-sm text-white/50">New here? <Link to={registerHref} className="text-accent-400 hover:text-accent-300">Create an account</Link></p>
-          {expectedRole === 'candidate' && <p className="mt-3 text-center text-xs text-white/30"><Link to="/employer/login" className="hover:text-white/50">Hiring instead? Employer sign in</Link></p>}
-          {expectedRole === 'employer' && <p className="mt-3 text-center text-xs text-white/30"><Link to="/candidate/login" className="hover:text-white/50">Looking for a job? Candidate sign in</Link></p>}
+          {expectedRole !== 'admin' && <>
+            <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-white/10" /><span className="text-xs text-white/30">OR</span><div className="h-px flex-1 bg-white/10" /></div>
+            <button onClick={() => signInWithGoogle(expectedRole)} className="btn-secondary w-full"><Chrome size={18} /> Continue with Google</button>
+            <p className="mt-6 text-center text-sm text-white/50">New here? <Link to={registerHref} className="text-accent-400 hover:text-accent-300">Create an account</Link></p>
+            {expectedRole === 'candidate' && <p className="mt-3 text-center text-xs text-white/30"><Link to="/employer/login" className="hover:text-white/50">Hiring instead? Employer sign in</Link></p>}
+            {expectedRole === 'employer' && <p className="mt-3 text-center text-xs text-white/30"><Link to="/candidate/login" className="hover:text-white/50">Looking for a job? Candidate sign in</Link></p>}
+          </>}
         </div>
       </div>
     </div>

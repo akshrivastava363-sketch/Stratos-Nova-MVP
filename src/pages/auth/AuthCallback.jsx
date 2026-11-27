@@ -21,9 +21,20 @@ export default function AuthCallback() {
     (async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) { setError(sessionError?.message || 'Could not complete sign-in.'); return; }
-      const { data: userRow } = await supabase.from('users').select('role').eq('id', session.user.id).maybeSingle();
-      const role = userRow?.role || 'candidate';
-      navigate(dashboardByRole[role] || '/candidate/dashboard', { replace: true });
+      const { data: userRow, error: profileError } = await supabase.from('users').select('role').eq('id', session.user.id).maybeSingle();
+      if (profileError || !userRow?.role) {
+        await supabase.auth.signOut();
+        setError('Your account profile could not be verified. Please contact support.');
+        return;
+      }
+      const role = userRow.role;
+      const expectedRole = new URLSearchParams(window.location.search).get('expected_role');
+      if (expectedRole && role !== expectedRole) {
+        await supabase.auth.signOut();
+        setError(`This account is not registered as ${expectedRole}. Please use the correct sign-in page.`);
+        return;
+      }
+      navigate(dashboardByRole[role] || '/login', { replace: true });
     })();
   }, [navigate]);
 
