@@ -68,3 +68,16 @@ The repository is connected to the Cloudflare Pages project `stratos-nova-mvp`:
 5. Register a candidate account → fill profile, add education/employment records, take an assessment, apply to the job
 6. As employer: move the application through the ATS pipeline, try Recruiter Assist, add an interview scorecard
 7. As admin: check Repository Health and Analytics to see the data flowing through
+
+
+## Automated validation
+
+Run the repository regression checks and production build with:
+
+```bash
+npm ci
+npm test
+npm run build
+```
+
+Cloudflare Pages is configured to run `npm test && npm run build` for deployments so a failed regression check prevents deployment.
