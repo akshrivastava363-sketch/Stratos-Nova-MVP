@@ -53,6 +53,7 @@ import AdminAnalytics from './pages/admin/Analytics';
 import RepositoryHealth from './pages/admin/RepositoryHealth';
 import AdminSettings from './pages/admin/Settings';
 import AdminActivityLog from './pages/admin/ActivityLog';
+import VerificationRequests from './pages/admin/VerificationRequests';
 
 import Messages from './pages/shared/Messages';
 import Notifications from './pages/shared/Notifications';
@@ -117,6 +118,7 @@ export default function App() {
           <Route path="/admin/candidates/:id" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminCandidateDetails /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/admin/employers/:id" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminEmployerDetails /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/admin/outreach" element={<ProtectedRoute allowedRoles={['admin']}><CandidateOutreach role="admin" /></ProtectedRoute>} />
+          <Route path="/admin/verifications" element={<ProtectedRoute allowedRoles={['admin']}><VerificationRequests /></ProtectedRoute>} />
           <Route path="/admin/employers" element={<ProtectedRoute allowedRoles={['admin']}><AdminEmployers /></ProtectedRoute>} />
           <Route path="/admin/recruiters" element={<ProtectedRoute allowedRoles={['admin']}><AdminRecruiters /></ProtectedRoute>} />
           <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={['admin']}><AdminJobs /></ProtectedRoute>} />
