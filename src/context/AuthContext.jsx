@@ -9,27 +9,84 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const loadUserRow = useCallback(async (userId) => {
-    if (!userId) { setProfile(null); return; }
-    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
-    if (!error) setProfile(data);
+    if (!userId) {
+      setProfile(null);
+      return null;
+    }
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+    if (error || !data) {
+      setProfile(null);
+      if (error) throw error;
+      return null;
+    }
+    setProfile(data);
+    return data;
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      loadUserRow(session?.user?.id).finally(() => setLoading(false));
+    let active = true;
+
+    // Resolve the persisted session first. Auth callbacks below are deliberately
+    // kept synchronous: Supabase warns against awaiting Supabase calls inside
+    // onAuthStateChange because it can deadlock the auth lock.
+    supabase.auth.getSession().then(async ({ data: { session: currentSession }, error }) => {
+      if (!active) return;
+      if (error) {
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      setSession(currentSession);
+      try {
+        await loadUserRow(currentSession?.user?.id);
+      } catch (profileError) {
+        console.error('Unable to load authenticated user profile:', profileError);
+      } finally {
+        if (active) setLoading(false);
+      }
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      loadUserRow(session?.user?.id);
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      if (!nextSession) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      Promise.resolve().then(async () => {
+        if (!active) return;
+        try {
+          await loadUserRow(nextSession.user.id);
+        } catch (profileError) {
+          console.error('Unable to load authenticated user profile:', profileError);
+        } finally {
+          if (active) setLoading(false);
+        }
+      });
     });
-    return () => listener.subscription.unsubscribe();
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, [loadUserRow]);
 
   const signUp = async ({ email, password, fullName, role, companyName, phone }) => {
+    const safeRole = role === 'employer' ? 'employer' : 'candidate';
     const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullName, role, company_name: companyName || null, phone: phone || null } },
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: safeRole,
+          company_name: safeRole === 'employer' ? companyName || null : null,
+          phone: phone || null,
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
     return { data, error };
   };
@@ -39,16 +96,20 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (expectedRole) => {
+    const callback = new URL('/auth/callback', window.location.origin);
+    if (expectedRole) callback.searchParams.set('expected_role', expectedRole);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callback.toString() },
     });
     return { data, error };
   };
 
-  const signOut = async () => { const { error } = await supabase.auth.signOut();
-      if (error) throw error; };
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  };
 
   const value = {
     session,
@@ -56,7 +117,10 @@ export function AuthProvider({ children }) {
     profile,
     role: profile?.role ?? null,
     loading,
-    signUp, signIn, signInWithGoogle, signOut,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    signOut,
     refreshProfile: () => loadUserRow(session?.user?.id),
   };
 
