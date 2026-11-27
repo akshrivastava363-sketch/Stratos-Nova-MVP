@@ -44,7 +44,7 @@ test('password reset requests a Supabase recovery link and updates the password 
 });
 
 test('verification requests are consent-backed and row-scoped', () => {
-  assert.match(verification, /consented_at IS NOT NULL/);
+  assert.match(verification, /consented_at is not null/i);
   assert.match(verification, /candidate_id = auth\.uid\(\)/);
   assert.match(verification, /Candidates withdraw own verification requests/);
   assert.match(verification, /Admins update verification requests/);
