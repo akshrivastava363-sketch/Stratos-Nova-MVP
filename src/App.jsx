@@ -7,6 +7,7 @@ import Home from './pages/public/Home';
 import Login from './pages/auth/Login';
 import CandidateLogin from './pages/auth/CandidateLogin';
 import EmployerLogin from './pages/auth/EmployerLogin';
+import AdminLogin from './pages/auth/AdminLogin';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
@@ -65,14 +66,14 @@ export default function App() {
       <AuthProvider>
         <Toaster position="top-right" toastOptions={{ style: { background: '#161d33', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' } }} />
         <Routes>
-          {/* Public */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/candidate/login" element={<CandidateLogin />} />
           <Route path="/employer/login" element={<EmployerLogin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-	  <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/jobs" element={<JobSearch />} />
           <Route path="/jobs/:id" element={<JobDetails />} />
@@ -81,7 +82,6 @@ export default function App() {
           <Route path="/blog" element={<BlogList />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
 
-          {/* Candidate */}
           <Route path="/candidate/dashboard" element={<ProtectedRoute allowedRoles={['candidate']}><CandidateDashboard /></ProtectedRoute>} />
           <Route path="/candidate/profile" element={<ProtectedRoute allowedRoles={['candidate']}><CandidateProfile /></ProtectedRoute>} />
           <Route path="/candidate/history" element={<ProtectedRoute allowedRoles={['candidate']}><EducationEmployment /></ProtectedRoute>} />
@@ -91,7 +91,6 @@ export default function App() {
           <Route path="/candidate/messages" element={<ProtectedRoute allowedRoles={['candidate']}><Messages role="candidate" /></ProtectedRoute>} />
           <Route path="/candidate/notifications" element={<ProtectedRoute allowedRoles={['candidate']}><Notifications role="candidate" /></ProtectedRoute>} />
 
-          {/* Employer */}
           <Route path="/employer/dashboard" element={<ProtectedRoute allowedRoles={['employer']}><EmployerDashboard /></ProtectedRoute>} />
           <Route path="/employer/jobs/new" element={<ProtectedRoute allowedRoles={['employer']}><JobForm /></ProtectedRoute>} />
           <Route path="/employer/jobs/:id/edit" element={<ProtectedRoute allowedRoles={['employer']}><JobForm /></ProtectedRoute>} />
@@ -103,7 +102,6 @@ export default function App() {
           <Route path="/employer/subscription" element={<ProtectedRoute allowedRoles={['employer']}><EmployerSubscription /></ProtectedRoute>} />
           <Route path="/employer/messages" element={<ProtectedRoute allowedRoles={['employer']}><Messages role="employer" /></ProtectedRoute>} />
 
-          {/* Recruiter */}
           <Route path="/recruiter/dashboard" element={<ProtectedRoute allowedRoles={['recruiter']}><RecruiterDashboard /></ProtectedRoute>} />
           <Route path="/recruiter/jobs" element={<ProtectedRoute allowedRoles={['recruiter']}><RecruiterAssignedJobs /></ProtectedRoute>} />
           <Route path="/recruiter/jobs/:id/applicants" element={<ProtectedRoute allowedRoles={['recruiter']}><JobApplicants role="recruiter" /></ProtectedRoute>} />
@@ -112,7 +110,6 @@ export default function App() {
           <Route path="/recruiter/messages" element={<ProtectedRoute allowedRoles={['recruiter']}><Messages role="recruiter" /></ProtectedRoute>} />
           <Route path="/recruiter/notifications" element={<ProtectedRoute allowedRoles={['recruiter']}><Notifications role="recruiter" /></ProtectedRoute>} />
 
-          {/* Admin */}
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/admin/candidates/:id" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary><AdminCandidateDetails /></ErrorBoundary></ProtectedRoute>} />
