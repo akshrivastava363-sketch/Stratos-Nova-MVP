@@ -12,6 +12,10 @@ const verificationBadge = {
   pending: 'bg-yellow-500/15 text-yellow-300',
   verified: 'bg-green-500/15 text-green-300',
   failed: 'bg-red-500/15 text-red-300',
+  discrepancy: 'bg-red-500/15 text-red-300',
+  unable_to_verify: 'bg-white/10 text-white/50',
+  candidate_action_required: 'bg-orange-500/15 text-orange-300',
+  withdrawn: 'bg-white/10 text-white/40',
 };
 
 const emptyEdu = { qualification: '', degree: '', college: '', university: '', specialization: '', passing_year: '', percentage: '' };
@@ -21,19 +25,49 @@ export default function EducationEmployment() {
   const { user } = useAuth();
   const [education, setEducation] = useState([]);
   const [employment, setEmployment] = useState([]);
+  const [verificationRequests, setVerificationRequests] = useState([]);
   const [eduForm, setEduForm] = useState(emptyEdu);
   const [jobForm, setJobForm] = useState(emptyJob);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [{ data: edu }, { data: emp }] = await Promise.all([
+    const [{ data: edu }, { data: emp }, { data: requests, error: requestError }] = await Promise.all([
       supabase.from('education_records').select('*').eq('candidate_id', user.id).order('passing_year', { ascending: false }),
       supabase.from('employment_records').select('*').eq('candidate_id', user.id).order('joining_date', { ascending: false }),
+      supabase.from('verification_requests').select('*').eq('candidate_id', user.id).order('created_at', { ascending: false }),
     ]);
-    setEducation(edu || []); setEmployment(emp || []); setLoading(false);
+    if (requestError) toast.error('Could not load verification requests: ' + requestError.message);
+    setEducation(edu || []); setEmployment(emp || []); setVerificationRequests(requests || []); setLoading(false);
   };
 
   useEffect(() => { if (user) load(); }, [user]);
+
+  const requestVerification = async (recordType, recordId) => {
+    const existing = verificationRequests.find((r) => r.record_type === recordType && r.record_id === recordId);
+    if (existing && ['pending', 'in_review', 'candidate_action_required'].includes(existing.status)) {
+      toast('A verification request is already in progress.');
+      return;
+    }
+    const consentText = 'I explicitly authorise Stratos Nova HR Solutions to process this selected education or employment record for recruitment-related verification. I authorise Stratos Nova to contact the relevant issuing institution, former/current employer or an appropriately authorised verification provider, and to share the resulting verification outcome with the employer/client for the recruitment purpose explained to me. I understand that a government or third-party provider is not connected unless the platform explicitly identifies an approved integration. I can withdraw this request while it is still in progress.';
+    const accepted = window.confirm(
+      'CANDIDATE VERIFICATION CONSENT\\n\\n' + consentText +
+      '\\n\\nDo you consent to this specific verification request?'
+    );
+    if (!accepted) return;
+    const { error } = await supabase.from('verification_requests').insert({
+      candidate_id: user.id,
+      record_type: recordType,
+      record_id: recordId,
+      purpose: 'Recruitment-related verification for roles considered through Stratos Nova',
+      consent_version: '2026-11-27-v1',
+      consent_text: consentText,
+      consented_at: new Date().toISOString(),
+      status: 'pending',
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success('Consent recorded and verification request submitted.');
+    await load();
+  };
 
   const syncCompletion = async (eduCount, expCount) => {
     const [{ data: profile }, { count: skillsCount }] = await Promise.all([
@@ -150,7 +184,10 @@ export default function EducationEmployment() {
             <button type="submit" className="btn-primary w-full !py-2 text-sm"><Plus size={14} /> Add Education</button>
           </form>
           <div className="space-y-3">
-            {education.map((ed) => (
+            {education.map((ed) => {
+              const verificationRequest = verificationRequests.find((r) => r.record_type === 'education' && r.record_id === ed.id);
+              const verificationState = verificationRequest?.status || ed.verification_status;
+              return (
               <div key={ed.id} className="card">
                 <div className="flex items-start justify-between">
                   <div>
@@ -160,14 +197,17 @@ export default function EducationEmployment() {
                   <button onClick={() => removeEducation(ed.id)} className="text-white/40 hover:text-red-400"><Trash2 size={14} /></button>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className={`badge ${verificationBadge[ed.verification_status]}`}>{ed.verification_status}</span>
+                  <span className={`badge ${verificationBadge[verificationState] || verificationBadge.unverified}`}>{verificationState?.replaceAll('_', ' ')}</span>
+                  {(!verificationRequest || ['withdrawn', 'unable_to_verify', 'discrepancy'].includes(verificationRequest.status)) && <button type="button" onClick={() => requestVerification('education', ed.id)} className="text-xs text-accent-300 hover:text-accent-200">Request verification</button>}
+                  {verificationRequest?.result_summary && <span className="text-xs text-white/40">{verificationRequest.result_summary}</span>}
                   <label className="cursor-pointer text-xs text-accent-400 hover:text-accent-300">
                     <Upload size={11} className="mr-1 inline" /> {ed.document_url ? 'Replace document' : 'Upload document'}
                     <input type="file" className="hidden" onChange={(e) => e.target.files[0] && uploadDoc(ed.id, 'education_records', e.target.files[0])} />
                   </label>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -187,7 +227,10 @@ export default function EducationEmployment() {
             <button type="submit" className="btn-primary w-full !py-2 text-sm"><Plus size={14} /> Add Employment</button>
           </form>
           <div className="space-y-3">
-            {employment.map((em) => (
+            {employment.map((em) => {
+              const verificationRequest = verificationRequests.find((r) => r.record_type === 'employment' && r.record_id === em.id);
+              const verificationState = verificationRequest?.status || em.verification_status;
+              return (
               <div key={em.id} className="card">
                 <div className="flex items-start justify-between">
                   <div>
@@ -199,14 +242,17 @@ export default function EducationEmployment() {
                   <button onClick={() => removeEmployment(em.id)} className="text-white/40 hover:text-red-400"><Trash2 size={14} /></button>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className={`badge ${verificationBadge[em.verification_status]}`}>{em.verification_status}</span>
+                  <span className={`badge ${verificationBadge[verificationState] || verificationBadge.unverified}`}>{verificationState?.replaceAll('_', ' ')}</span>
+                  {(!verificationRequest || ['withdrawn', 'unable_to_verify', 'discrepancy'].includes(verificationRequest.status)) && <button type="button" onClick={() => requestVerification('employment', em.id)} className="text-xs text-accent-300 hover:text-accent-200">Request verification</button>}
+                  {verificationRequest?.result_summary && <span className="text-xs text-white/40">{verificationRequest.result_summary}</span>}
                   <label className="cursor-pointer text-xs text-accent-400 hover:text-accent-300">
                     <Upload size={11} className="mr-1 inline" /> {em.experience_letter_url ? 'Replace letter' : 'Upload experience letter'}
                     <input type="file" className="hidden" onChange={(e) => e.target.files[0] && uploadDoc(em.id, 'employment_records', e.target.files[0])} />
                   </label>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
