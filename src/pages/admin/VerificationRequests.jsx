@@ -34,6 +34,7 @@ export default function VerificationRequests() {
   const [filter, setFilter] = useState('open');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
+  const [openingEvidence, setOpeningEvidence] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -55,8 +56,8 @@ export default function VerificationRequests() {
     const empIds = rows.filter((r) => r.record_type === 'employment').map((r) => r.record_id);
     const [usersResult, eduResult, empResult] = await Promise.all([
       ids.length ? supabase.from('users').select('id,full_name,email').in('id', ids) : Promise.resolve({ data: [] }),
-      eduIds.length ? supabase.from('education_records').select('id,degree,college,university,passing_year').in('id', eduIds) : Promise.resolve({ data: [] }),
-      empIds.length ? supabase.from('employment_records').select('id,company,designation,joining_date,exit_date,is_current').in('id', empIds) : Promise.resolve({ data: [] }),
+      eduIds.length ? supabase.from('education_records').select('id,degree,college,university,passing_year,document_url').in('id', eduIds) : Promise.resolve({ data: [] }),
+      empIds.length ? supabase.from('employment_records').select('id,company,designation,joining_date,exit_date,is_current,experience_letter_url').in('id', empIds) : Promise.resolve({ data: [] }),
     ]);
     setCandidates(Object.fromEntries((usersResult.data || []).map((u) => [u.id, u])));
     setRecords({
@@ -77,6 +78,16 @@ export default function VerificationRequests() {
   const changeDraft = (id, key, value) => setDrafts((current) => ({
     ...current, [id]: { ...current[id], [key]: value },
   }));
+
+  const openEvidence = async (request, record) => {
+    const objectPath = request.record_type === 'education' ? record.document_url : record.experience_letter_url;
+    if (!objectPath) { toast.error('No supporting document has been uploaded for this record.'); return; }
+    setOpeningEvidence(request.id);
+    const { data, error } = await supabase.storage.from('resumes').createSignedUrl(objectPath, 300);
+    setOpeningEvidence('');
+    if (error || !data?.signedUrl) { toast.error(error?.message || 'Could not create a secure document link.'); return; }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const save = async (request) => {
     const draft = drafts[request.id];
@@ -141,6 +152,7 @@ export default function VerificationRequests() {
                   <div>
                     <div className="font-semibold">{candidate.full_name || 'Candidate'} <span className="font-normal text-white/40">· {candidate.email || request.candidate_id}</span></div>
                     <div className="mt-1 text-sm text-white/70">{record.type || request.record_type} — {record.degree || record.designation || ''} {record.college || record.company || ''}</div>
+                    {(request.record_type === 'education' ? record.document_url : record.experience_letter_url) && <button type="button" onClick={() => openEvidence(request, record)} disabled={openingEvidence === request.id} className="mt-2 text-xs text-accent-300 hover:text-accent-200">{openingEvidence === request.id ? 'Preparing secure link…' : 'Open uploaded supporting document'}</button>}
                     <div className="mt-1 text-xs text-white/40">Requested {new Date(request.created_at).toLocaleString()} · Consent version {request.consent_version}</div>
                   </div>
                   <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/70">{request.status.replaceAll('_',' ')}</span>
