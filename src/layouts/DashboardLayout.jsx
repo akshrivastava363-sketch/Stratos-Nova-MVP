@@ -41,6 +41,7 @@ const navByRole = {
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Users', href: '/admin/users', icon: Users },
     { label: 'Candidate Updates', href: '/admin/outreach', icon: RefreshCw },
+    { label: 'Verification', href: '/admin/verifications', icon: ShieldCheck },
     { label: 'Employers', href: '/admin/employers', icon: ShieldCheck },
     { label: 'Recruiters', href: '/admin/recruiters', icon: UserCog },
     { label: 'Jobs', href: '/admin/jobs', icon: Briefcase },
